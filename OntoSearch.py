@@ -60,27 +60,42 @@ def main():
     # Radio buttons to select search type
     search_type = st.radio("Select search type", ("Synonym Search", "Mendel ID Lookup", "Code Search", "Relaxed Code Search", "Semi-Relaxed Code Search"))
 
-    # Text input for search phrases or Mendel IDs
-    if search_type == "Synonym Search":
-        search_input = st.text_input("Enter search phrases separated by '||'")
-    elif search_type == "Mendel ID Lookup":
-        search_input = st.text_input("Enter Mendel IDs separated by commas")
-    elif search_type == "Code Search":
-        search_input = st.text_input("Enter codes separated by '||'")
-    elif search_type == "Relaxed Code Search":
-        search_input = st.text_input("Enter code values separated by '||'")
-    else:
-        search_input = st.text_input("Enter code values separated by '||'")
+    # Provide options to input search terms
+    st.write("### Provide search values")
+    search_input = st.text_input("Enter search terms separated by '||' (optional)")
+    search_values_file = st.file_uploader("Upload a CSV file with a single column 'Values' containing search terms (optional)", type=["csv"])
+
+    # Initialize search_values_list
+    search_values_list = []
+
+    # Process the uploaded CSV file if provided
+    if search_values_file is not None:
+        try:
+            search_values_df = pd.read_csv(search_values_file)
+            if 'Values' not in search_values_df.columns:
+                st.error("CSV file must have a single header 'Values'")
+                return
+            search_values_list = search_values_df['Values'].dropna().astype(str).tolist()
+            st.success(f"Loaded {len(search_values_list)} search values from CSV file.")
+        except Exception as e:
+            st.error(f"Error reading CSV file: {e}")
+            return
+
+    # Process the text input if provided
+    if search_input.strip():
+        input_values = [value.strip() for value in search_input.split('||') if value.strip()]
+        search_values_list.extend(input_values)
+
+    # Check if there are any search values
+    if not search_values_list:
+        st.error("Please enter search terms in the text box or upload a CSV file.")
+        return
 
     # Button to start the search
     if st.button("Search"):
 
         if selected_zip_file is None:
             st.error("Please select an existing ZIP file or upload a new one.")
-            return
-
-        if not search_input.strip():
-            st.error("Please enter at least one search phrase, Mendel ID, or code.")
             return
 
         # Set up logging to capture logs in the Streamlit app
@@ -91,6 +106,9 @@ def main():
         handler.setFormatter(logging.Formatter('%(message)s'))
         logger.handlers = [handler]
 
+        # Join the search values into a single string if needed by the processing functions
+        search_values_input = '||'.join(search_values_list) if search_type != "Mendel ID Lookup" else ','.join(search_values_list)
+
         # Process the selected ZIP file and search for matches
         try:
             # Read the ZIP file from the shared directory
@@ -99,15 +117,15 @@ def main():
                 zip_file_data = f.read()
 
             if search_type == "Synonym Search":
-                results_df = process_zip_file_synonym_search(zip_file_data, search_input, logger)
+                results_df = process_zip_file_synonym_search(zip_file_data, search_values_input, logger)
             elif search_type == "Mendel ID Lookup":
-                results_df = process_zip_file_mendel_id_lookup(zip_file_data, search_input, logger)
+                results_df = process_zip_file_mendel_id_lookup(zip_file_data, search_values_input, logger)
             elif search_type == "Code Search":
-                results_df = process_zip_file_code_search(zip_file_data, search_input, logger)
+                results_df = process_zip_file_code_search(zip_file_data, search_values_input, logger)
             elif search_type == "Relaxed Code Search":
-                results_df = process_zip_file_code_value_search(zip_file_data, search_input, logger)
+                results_df = process_zip_file_code_value_search(zip_file_data, search_values_input, logger)
             else:
-                results_df = process_zip_file_code_value_semi_relaxed_search(zip_file_data, search_input, logger)
+                results_df = process_zip_file_code_value_semi_relaxed_search(zip_file_data, search_values_input, logger)
 
             st.success("Search completed.")
 
@@ -146,10 +164,8 @@ def process_zip_file_synonym_search(zip_file_data, search_phrases_input, logger)
             with z.open(owl_filename) as owl_content:
                 # Read the content of the OWL file
                 owl_data = owl_content.read()
-
                 # Convert owl_data to a BytesIO object for parsing
                 owl_content = io.BytesIO(owl_data)
-
                 # Call the processing function
                 results_df = process_owl_file_synonym_search(owl_content, search_phrases_input, logger)
                 return results_df
@@ -161,7 +177,7 @@ def process_zip_file_synonym_search(zip_file_data, search_phrases_input, logger)
         raise
 
 def process_zip_file_mendel_id_lookup(zip_file_data, mendel_ids_input, logger):
-    # Existing code remains the same
+    # Read the zip file from bytes
     try:
         with zipfile.ZipFile(io.BytesIO(zip_file_data)) as z:
             # Find the OWL file inside the zip archive
@@ -173,10 +189,8 @@ def process_zip_file_mendel_id_lookup(zip_file_data, mendel_ids_input, logger):
             with z.open(owl_filename) as owl_content:
                 # Read the content of the OWL file
                 owl_data = owl_content.read()
-
                 # Convert owl_data to a BytesIO object for parsing
                 owl_content = io.BytesIO(owl_data)
-
                 # Call the processing function
                 results_df = process_owl_file_mendel_id_lookup(owl_content, mendel_ids_input, logger)
                 return results_df
@@ -188,7 +202,7 @@ def process_zip_file_mendel_id_lookup(zip_file_data, mendel_ids_input, logger):
         raise
 
 def process_zip_file_code_search(zip_file_data, codes_input, logger):
-    # Existing code remains the same
+    # Read the zip file from bytes
     try:
         with zipfile.ZipFile(io.BytesIO(zip_file_data)) as z:
             # Find the OWL file inside the zip archive
@@ -200,10 +214,8 @@ def process_zip_file_code_search(zip_file_data, codes_input, logger):
             with z.open(owl_filename) as owl_content:
                 # Read the content of the OWL file
                 owl_data = owl_content.read()
-
                 # Convert owl_data to a BytesIO object for parsing
                 owl_content = io.BytesIO(owl_data)
-
                 # Call the processing function
                 results_df = process_owl_file_code_search(owl_content, codes_input, logger)
                 return results_df
@@ -215,7 +227,7 @@ def process_zip_file_code_search(zip_file_data, codes_input, logger):
         raise
 
 def process_zip_file_code_value_search(zip_file_data, codes_input, logger):
-    # Existing code remains the same
+    # Read the zip file from bytes
     try:
         with zipfile.ZipFile(io.BytesIO(zip_file_data)) as z:
             # Find the OWL file inside the zip archive
@@ -227,10 +239,8 @@ def process_zip_file_code_value_search(zip_file_data, codes_input, logger):
             with z.open(owl_filename) as owl_content:
                 # Read the content of the OWL file
                 owl_data = owl_content.read()
-
                 # Convert owl_data to a BytesIO object for parsing
                 owl_content = io.BytesIO(owl_data)
-
                 # Call the processing function
                 results_df = process_owl_file_code_value_search(owl_content, codes_input, logger)
                 return results_df
@@ -254,10 +264,8 @@ def process_zip_file_code_value_semi_relaxed_search(zip_file_data, codes_input, 
             with z.open(owl_filename) as owl_content:
                 # Read the content of the OWL file
                 owl_data = owl_content.read()
-
                 # Convert owl_data to a BytesIO object for parsing
                 owl_content = io.BytesIO(owl_data)
-
                 # Call the processing function
                 results_df = process_owl_file_code_value_semi_relaxed_search(owl_content, codes_input, logger)
                 return results_df
@@ -363,7 +371,7 @@ def process_owl_file_mendel_id_lookup(owl_content, mendel_ids_input, logger):
     # Split the Mendel IDs and strip whitespace
     mendel_ids = [mid.strip() for mid in mendel_ids_input.split(',') if mid.strip()]
 
-    # Build a mapping from Mendel_ID to original search term(s)
+    # Build a set for faster lookup
     mendel_ids_set = set(mendel_ids)
 
     # Parse the OWL file
@@ -748,7 +756,7 @@ def get_mendel_id(cls, namespaces):
     return mendel_id
 
 def get_synonyms(cls, namespaces):
-    # Existing code remains the same
+    # Get Synonyms
     synonyms_elems = cls.xpath('.//owl0:Synonyms', namespaces=namespaces)
     if not synonyms_elems:
         synonyms_elems = cls.xpath('.//*[local-name()="Synonyms"]')
@@ -760,7 +768,7 @@ def get_synonyms(cls, namespaces):
     return synonyms
 
 def get_class_label(cls, namespaces):
-    # Existing code remains the same
+    # Get the class label
     label_elems = cls.xpath('.//rdfs:label', namespaces=namespaces)
     if not label_elems:
         label_elems = cls.xpath('.//*[local-name()="label"]')
@@ -768,7 +776,7 @@ def get_class_label(cls, namespaces):
     return class_label
 
 def get_codes(cls, namespaces):
-    # Existing code remains the same
+    # Get Codes elements
     codes_elems = cls.xpath('.//owl0:Codes', namespaces=namespaces)
     if not codes_elems:
         codes_elems = cls.xpath('.//owl:Codes', namespaces=namespaces)
