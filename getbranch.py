@@ -177,81 +177,79 @@ with st.sidebar:
     selected_file = st.selectbox("Select a saved OWL file", saved_files)
 
 # Main layout
-st.header("Extract Children and Parents from OWL File")
+st.header("Extract Children from OWL File")
 
-col1, col2 = st.columns(2)
+st.subheader("Extract Children")
+branch_root_id = st.text_input("Enter Root Mendel ID for Children Extraction")
 
-with col1:
-    st.subheader("Extract Children")
-    branch_root_id = st.text_input("Enter Root Mendel ID for Children Extraction")
-    
-    if st.button('Extract Children'):
-        if branch_root_id and selected_file:
-            owl_file_path = os.path.join(UPLOAD_DIR, selected_file)
-    
-            try:
-                # Parse the OWL file
-                tree = etree.parse(owl_file_path)
-                root = tree.getroot()
-    
-                # Extract the children
-                branch_data = extract_children(root, branch_root_id)
-    
-                if branch_data:
-                    branch_df = pd.DataFrame(branch_data, columns=["Mendel ID", "Label", "Label::Mendel ID"])
-                    st.write("Extracted Children:")
-                    st.dataframe(branch_df)
-    
-                    # Prepare the output string in the desired format
-                    label_mendel_id_list = branch_df['Label::Mendel ID'].tolist()
-                    output_string = 'Concept Dropdown {' + '||'.join(label_mendel_id_list) + '}'
-    
-                    # Display in text area
-                    st.text_area("Editable Output", value=output_string, height=200)
-                else:
-                    st.warning("No data extracted for the given Root Mendel ID.")
-            except Exception as e:
-                st.error(f"An error occurred: {str(e)}")
-        else:
-            st.error("Please enter a Mendel ID and select an OWL file.")
+if st.button('Extract Children'):
+    if branch_root_id and selected_file:
+        owl_file_path = os.path.join(UPLOAD_DIR, selected_file)
 
-with col2:
-    st.subheader("Extract Parents")
-    parent_root_id = st.text_input("Enter Mendel ID for Parents Extraction")
-    
-    if st.button('Extract Parents'):
-        if parent_root_id and selected_file:
-            owl_file_path = os.path.join(UPLOAD_DIR, selected_file)
-    
-            try:
-                # Parse the OWL file
-                tree = etree.parse(owl_file_path)
-                root = tree.getroot()
-    
-                # Extract the parents
-                parent_data = extract_parents(root, parent_root_id)
-    
-                if parent_data:
-                    parent_df = pd.DataFrame(parent_data, columns=["Mendel ID", "Label", "Label::Mendel ID", "Level"])
-    
-                    # Create an indented label to represent hierarchy
-                    parent_df['Indented Label'] = parent_df.apply(
-                        lambda row: ('--' * row['Level']) + '> ' + row['Label'], axis=1
-                    )
-                    parent_df['Indented Label::Mendel ID'] = parent_df['Indented Label'] + '::' + parent_df['Mendel ID']
-    
-                    st.write("Extracted Parents (Including Multiple Inheritance):")
-                    st.dataframe(parent_df[["Mendel ID", "Indented Label", "Label::Mendel ID", "Level"]])
-    
-                    # Prepare the output string in the desired format
-                    label_mendel_id_list = parent_df['Indented Label::Mendel ID'].tolist()
-                    output_string = 'Concept Dropdown {' + '||'.join(label_mendel_id_list) + '}'
-    
-                    # Display in text area
-                    st.text_area("Editable Output", value=output_string, height=200)
-                else:
-                    st.warning("No parents found for the given Mendel ID.")
-            except Exception as e:
-                st.error(f"An error occurred: {str(e)}")
-        else:
-            st.error("Please enter a Mendel ID and select an OWL file.")
+        try:
+            # Parse the OWL file
+            tree = etree.parse(owl_file_path)
+            root = tree.getroot()
+
+            # Extract the children
+            branch_data = extract_children(root, branch_root_id)
+
+            if branch_data:
+                branch_df = pd.DataFrame(branch_data, columns=["Mendel ID", "Label", "Label::Mendel ID"])
+                st.write("Extracted Children:")
+                st.dataframe(branch_df)
+
+                # Prepare the output string in the desired format
+                label_mendel_id_list = branch_df['Label::Mendel ID'].tolist()
+                output_string = 'Concept Dropdown {' + '||'.join(label_mendel_id_list) + '}'
+
+                # Display in text area
+                st.text_area("Editable Output", value=output_string, height=200)
+            else:
+                st.warning("No data extracted for the given Root Mendel ID.")
+        except Exception as e:
+            st.error(f"An error occurred: {str(e)}")
+    else:
+        st.error("Please enter a Mendel ID and select an OWL file.")
+
+st.header("Extract Parents from OWL File")
+
+st.subheader("Extract Parents")
+parent_root_id = st.text_input("Enter Mendel ID for Parents Extraction")
+
+if st.button('Extract Parents'):
+    if parent_root_id and selected_file:
+        owl_file_path = os.path.join(UPLOAD_DIR, selected_file)
+
+        try:
+            # Parse the OWL file
+            tree = etree.parse(owl_file_path)
+            root = tree.getroot()
+
+            # Extract the parents
+            parent_data = extract_parents(root, parent_root_id)
+
+            if parent_data:
+                parent_df = pd.DataFrame(parent_data, columns=["Mendel ID", "Label", "Label::Mendel ID", "Level"])
+
+                # Create an indented label to represent hierarchy
+                parent_df['Indented Label'] = parent_df.apply(
+                    lambda row: ('--' * row['Level']) + '> ' + row['Label'], axis=1
+                )
+                parent_df['Indented Label::Mendel ID'] = parent_df['Indented Label'] + '::' + parent_df['Mendel ID']
+
+                st.write("Extracted Parents (Including Multiple Inheritance):")
+                st.dataframe(parent_df[["Mendel ID", "Indented Label", "Label::Mendel ID", "Level"]])
+
+                # Prepare the output string in the desired format
+                label_mendel_id_list = parent_df['Indented Label::Mendel ID'].tolist()
+                output_string = 'Concept Dropdown {' + '||'.join(label_mendel_id_list) + '}'
+
+                # Display in text area
+                st.text_area("Editable Output", value=output_string, height=200)
+            else:
+                st.warning("No parents found for the given Mendel ID.")
+        except Exception as e:
+            st.error(f"An error occurred: {str(e)}")
+    else:
+        st.error("Please enter a Mendel ID and select an OWL file.")
