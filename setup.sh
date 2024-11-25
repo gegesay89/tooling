@@ -1,6 +1,7 @@
 mkdir -p ~/.streamlit/
+
 cat <<EOF > ~/.streamlit/config.toml
-echo "[server]
+[server]
 maxUploadSize = 1024
 headless = true
 enableCORS = true
