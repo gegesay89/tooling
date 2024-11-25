@@ -5,4 +5,3 @@ headless = true
 enableCORS = true
 enableXsrfProtection = true
 port = ${PORT}
-" > ~/.streamlit/config.toml
