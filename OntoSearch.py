@@ -277,11 +277,98 @@ def process_zip_file_code_value_semi_relaxed_search(zip_file_data, codes_input, 
         raise
 
 def process_owl_file_synonym_search(owl_content, search_phrases_input, logger):
-    # Existing code remains unchanged
-    # This function processes the OWL content for synonym search
-    # ...
+    # The code for synonym search processing goes here
+    # For brevity, please refer to the earlier implementation of this function
+    # Since you requested the entire code, I'll include the implementation here
 
-    # Place your existing implementation here if needed
+    # Split the search phrases and strip whitespace
+    search_phrases = [phrase.strip() for phrase in search_phrases_input.split('||') if phrase.strip()]
+
+    # Convert search phrases to lowercase for case-insensitive matching
+    # Create a mapping from cleaned phrase to original phrase(s)
+    search_phrases_lower = {}
+    for phrase in search_phrases:
+        cleaned = phrase.lower()
+        search_phrases_lower.setdefault(cleaned, []).append(phrase)
+
+    # Parse the OWL file
+    logger.info('Parsing the OWL file...')
+    try:
+        tree = etree.parse(owl_content)
+        root = tree.getroot()
+        logger.info('OWL file parsed successfully.')
+    except Exception as e:
+        logger.error(f"Error parsing OWL file: {e}")
+        raise
+
+    # Define the namespaces
+    namespaces = {
+        'owl': 'http://www.w3.org/2002/07/owl#',
+        'owl0': 'http://www.w3.org/2002/07/owl#',
+        'rdf': 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+        'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
+        'xml': 'http://www.w3.org/XML/1998/namespace',
+        'xsd': 'http://www.w3.org/2001/XMLSchema#',
+        'www': 'http://www.w3.org/2002/07/',
+        'amr': 'http://www.semanticweb.org/amr/ontologies/2018/',
+    }
+
+    # Find all Class elements
+    classes = root.xpath('//owl0:Class', namespaces=namespaces)
+    total_classes = len(classes)
+    logger.info(f'Found {total_classes} classes in the OWL file.')
+
+    # Initialize a list to store results
+    results = []
+
+    # Progress bar
+    progress_bar = st.progress(0)
+
+    # Iterate over the classes
+    logger.info('Searching for matching synonyms...')
+    for idx, cls in enumerate(classes):
+        # Update progress bar
+        progress = (idx + 1) / total_classes
+        progress_bar.progress(progress)
+
+        # Get Mendel_ID
+        mendel_id = get_mendel_id(cls, namespaces)
+
+        # Get Synonyms
+        synonyms = get_synonyms(cls, namespaces)
+        if not synonyms:
+            continue
+
+        # Convert synonyms to lowercase for case-insensitive matching
+        synonyms_lower = set(syn.lower() for syn in synonyms)
+
+        # Perform exact matching using set intersection
+        matches = synonyms_lower.intersection(set(search_phrases_lower.keys()))
+
+        if matches:
+            # Get the class label
+            class_label = get_class_label(cls, namespaces)
+
+            # Retrieve original search phrases that matched
+            original_search_terms = []
+            for match in matches:
+                original_search_terms.extend(search_phrases_lower[match])
+
+            # Append the result
+            results.append({
+                'Original Search Term': '; '.join(set(original_search_terms)),
+                'Mendel_ID': mendel_id,
+                'Class_Label': class_label,
+                'Synonyms': '; '.join(synonyms),
+                'Matched Synonyms': '; '.join({syn for syn in synonyms if syn.lower() in matches})
+            })
+
+            # Log the match
+            logger.info(f"Exact match found: Mendel_ID: {mendel_id}, Class_Label: {class_label}, Original Search Term: {', '.join(set(original_search_terms))}")
+
+    # Convert results to DataFrame
+    results_df = pd.DataFrame(results)
+    return results_df
 
 def process_owl_file_mendel_id_lookup(owl_content, mendel_ids_input, logger):
     # Split the Mendel IDs and strip whitespace
@@ -310,7 +397,6 @@ def process_owl_file_mendel_id_lookup(owl_content, mendel_ids_input, logger):
         'xsd': 'http://www.w3.org/2001/XMLSchema#',
         'www': 'http://www.w3.org/2002/07/',
         'amr': 'http://www.semanticweb.org/amr/ontologies/2018/',
-        # Add or adjust namespaces as needed
     }
 
     # Find all Class elements
@@ -361,70 +447,7 @@ def process_owl_file_mendel_id_lookup(owl_content, mendel_ids_input, logger):
     return results_df
 
 def process_owl_file_code_search(owl_content, codes_input, logger):
-    # Existing code remains unchanged
-    # This function processes the OWL content for exact code search
-    # ...
+    # The code for exact code search processing goes here
+    # For brevity, including the implementation
 
-    # Place your existing implementation here if needed
-
-def process_owl_file_code_value_search(owl_content, codes_input, logger):
-    # Existing code remains unchanged
-    # This function processes the OWL content for relaxed code search
-    # ...
-
-    # Place your existing implementation here if needed
-
-def process_owl_file_code_value_semi_relaxed_search(owl_content, codes_input, logger):
-    # Existing code remains unchanged
-    # This function processes the OWL content for semi-relaxed code search
-    # ...
-
-    # Place your existing implementation here if needed
-
-def get_mendel_id(cls, namespaces):
-    # Get Mendel_ID
-    mendel_id_elems = cls.xpath('.//owl0:Mendel_ID', namespaces=namespaces)
-    if not mendel_id_elems:
-        mendel_id_elems = cls.xpath('.//*[local-name()="Mendel_ID"]')
-    mendel_id = mendel_id_elems[0].text.strip() if mendel_id_elems else None
-    return mendel_id
-
-def get_synonyms(cls, namespaces):
-    # Get Synonyms
-    synonyms_elems = cls.xpath('.//owl0:Synonyms', namespaces=namespaces)
-    if not synonyms_elems:
-        synonyms_elems = cls.xpath('.//*[local-name()="Synonyms"]')
-    if synonyms_elems:
-        synonyms_text = synonyms_elems[0].text or ''
-        synonyms = [syn.strip() for syn in synonyms_text.replace('\n', ';').split(';') if syn.strip()]
-    else:
-        synonyms = []
-    return synonyms
-
-def get_class_label(cls, namespaces):
-    # Get the class label
-    label_elems = cls.xpath('.//rdfs:label', namespaces=namespaces)
-    if not label_elems:
-        label_elems = cls.xpath('.//*[local-name()="label"]')
-    class_label = label_elems[0].text.strip() if label_elems else 'No label'
-    return class_label
-
-def get_codes(cls, namespaces):
-    # Get Codes elements
-    codes_elems = cls.xpath('.//owl0:Codes', namespaces=namespaces)
-    if not codes_elems:
-        codes_elems = cls.xpath('.//owl:Codes', namespaces=namespaces)
-    if not codes_elems:
-        codes_elems = cls.xpath('.//rdfs:Codes', namespaces=namespaces)
-    if not codes_elems:
-        codes_elems = cls.xpath('.//*[local-name()="Codes"]')
-
-    codes_list = []
-    for code_elem in codes_elems:
-        code_text = code_elem.text or ''
-        codes = [code.strip() for code in re.split(';|\n', code_text) if code.strip()]
-        codes_list.extend(codes)
-    return codes_list
-
-if __name__ == '__main__':
-    main()
+    # Split th
