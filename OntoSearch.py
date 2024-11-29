@@ -277,10 +277,6 @@ def process_zip_file_code_value_semi_relaxed_search(zip_file_data, codes_input, 
         raise
 
 def process_owl_file_synonym_search(owl_content, search_phrases_input, logger):
-    # The code for synonym search processing goes here
-    # For brevity, please refer to the earlier implementation of this function
-    # Since you requested the entire code, I'll include the implementation here
-
     # Split the search phrases and strip whitespace
     search_phrases = [phrase.strip() for phrase in search_phrases_input.split('||') if phrase.strip()]
 
@@ -311,6 +307,7 @@ def process_owl_file_synonym_search(owl_content, search_phrases_input, logger):
         'xsd': 'http://www.w3.org/2001/XMLSchema#',
         'www': 'http://www.w3.org/2002/07/',
         'amr': 'http://www.semanticweb.org/amr/ontologies/2018/',
+        # Add or adjust namespaces as needed
     }
 
     # Find all Class elements
@@ -397,6 +394,7 @@ def process_owl_file_mendel_id_lookup(owl_content, mendel_ids_input, logger):
         'xsd': 'http://www.w3.org/2001/XMLSchema#',
         'www': 'http://www.w3.org/2002/07/',
         'amr': 'http://www.semanticweb.org/amr/ontologies/2018/',
+        # Add or adjust namespaces as needed
     }
 
     # Find all Class elements
@@ -426,17 +424,15 @@ def process_owl_file_mendel_id_lookup(owl_content, mendel_ids_input, logger):
 
             # Get Synonyms
             synonyms = get_synonyms(cls, namespaces)
-
             # Get Codes
-            codes_list = get_codes(cls, namespaces)
-
+            codes = get_codes(cls, namespaces)
             # Append the result
             results.append({
                 'Original Search Term': mendel_id,
                 'Mendel_ID': mendel_id,
                 'Class_Label': class_label,
-                'Synonyms': '; '.join(synonyms) if synonyms else '',
-                'Codes': '; '.join(codes_list) if codes_list else ''
+                'Codes': '; '.join(codes) if codes else '',
+                'Synonyms': '; '.join(synonyms) if synonyms else ''
             })
 
             # Log the match
@@ -447,9 +443,6 @@ def process_owl_file_mendel_id_lookup(owl_content, mendel_ids_input, logger):
     return results_df
 
 def process_owl_file_code_search(owl_content, codes_input, logger):
-    # The code for exact code search processing goes here
-    # For brevity, including the implementation
-
     # Split the codes and strip whitespace
     codes = [code.strip() for code in codes_input.split('||') if code.strip()]
 
@@ -480,6 +473,7 @@ def process_owl_file_code_search(owl_content, codes_input, logger):
         'xsd': 'http://www.w3.org/2001/XMLSchema#',
         'www': 'http://www.w3.org/2002/07/',
         'amr': 'http://www.semanticweb.org/amr/ontologies/2018/',
+        # Add or adjust namespaces as needed
     }
 
     # Find all Class elements
@@ -540,9 +534,6 @@ def process_owl_file_code_search(owl_content, codes_input, logger):
     return results_df
 
 def process_owl_file_code_value_search(owl_content, codes_input, logger):
-    # The code for relaxed code value search processing goes here
-    # For brevity, including the implementation
-
     # Split the codes and strip whitespace
     codes = [code.strip() for code in codes_input.split('||') if code.strip()]
 
@@ -578,6 +569,7 @@ def process_owl_file_code_value_search(owl_content, codes_input, logger):
         'xsd': 'http://www.w3.org/2001/XMLSchema#',
         'www': 'http://www.w3.org/2002/07/',
         'amr': 'http://www.semanticweb.org/amr/ontologies/2018/',
+        # Add or adjust namespaces as needed
     }
 
     # Find all Class elements
@@ -597,7 +589,8 @@ def process_owl_file_code_value_search(owl_content, codes_input, logger):
     logger.info('Searching for Codes with relaxed matching...')
     for idx, cls in enumerate(classes):
         # Update progress bar
-        progress_bar.progress((idx + 1) / total_classes)
+        progress = (idx + 1) / total_classes
+        progress_bar.progress(progress)
 
         # Get Mendel_ID
         mendel_id = get_mendel_id(cls, namespaces)
@@ -649,9 +642,6 @@ def process_owl_file_code_value_search(owl_content, codes_input, logger):
     return results_df
 
 def process_owl_file_code_value_semi_relaxed_search(owl_content, codes_input, logger):
-    # The code for semi-relaxed code value search processing goes here
-    # For brevity, including the implementation
-
     # Split the codes and strip whitespace
     codes = [code.strip() for code in codes_input.split('||') if code.strip()]
 
@@ -687,6 +677,7 @@ def process_owl_file_code_value_semi_relaxed_search(owl_content, codes_input, lo
         'xsd': 'http://www.w3.org/2001/XMLSchema#',
         'www': 'http://www.w3.org/2002/07/',
         'amr': 'http://www.semanticweb.org/amr/ontologies/2018/',
+        # Add or adjust namespaces as needed
     }
 
     # Find all Class elements
@@ -706,7 +697,8 @@ def process_owl_file_code_value_semi_relaxed_search(owl_content, codes_input, lo
     logger.info('Searching for Codes with semi-relaxed matching...')
     for idx, cls in enumerate(classes):
         # Update progress bar
-        progress_bar.progress((idx + 1) / total_classes)
+        progress = (idx + 1) / total_classes
+        progress_bar.progress(progress)
 
         # Get Mendel_ID
         mendel_id = get_mendel_id(cls, namespaces)
@@ -804,3 +796,4 @@ def get_codes(cls, namespaces):
 
 if __name__ == '__main__':
     main()
+please make this code extracts the Code values when it does the mendel id search, leave everything else as is
