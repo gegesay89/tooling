@@ -450,4 +450,357 @@ def process_owl_file_code_search(owl_content, codes_input, logger):
     # The code for exact code search processing goes here
     # For brevity, including the implementation
 
-    # Split th
+    # Split the codes and strip whitespace
+    codes = [code.strip() for code in codes_input.split('||') if code.strip()]
+
+    # Convert codes to lowercase for case-insensitive matching
+    # Create a mapping from cleaned code to original code(s)
+    codes_lower = {}
+    for code in codes:
+        cleaned = code.lower()
+        codes_lower.setdefault(cleaned, []).append(code)
+
+    # Parse the OWL file
+    logger.info('Parsing the OWL file...')
+    try:
+        tree = etree.parse(owl_content)
+        root = tree.getroot()
+        logger.info('OWL file parsed successfully.')
+    except Exception as e:
+        logger.error(f"Error parsing OWL file: {e}")
+        raise
+
+    # Define the namespaces
+    namespaces = {
+        'owl': 'http://www.w3.org/2002/07/owl#',
+        'owl0': 'http://www.w3.org/2002/07/owl#',
+        'rdf': 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+        'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
+        'xml': 'http://www.w3.org/XML/1998/namespace',
+        'xsd': 'http://www.w3.org/2001/XMLSchema#',
+        'www': 'http://www.w3.org/2002/07/',
+        'amr': 'http://www.semanticweb.org/amr/ontologies/2018/',
+    }
+
+    # Find all Class elements
+    classes = root.xpath('//owl0:Class', namespaces=namespaces)
+    total_classes = len(classes)
+    logger.info(f'Found {total_classes} classes in the OWL file.')
+
+    # Initialize a list to store results
+    results = []
+
+    # Progress bar
+    progress_bar = st.progress(0)
+
+    # Iterate over the classes
+    logger.info('Searching for Codes...')
+    for idx, cls in enumerate(classes):
+        # Update progress bar
+        progress = (idx + 1) / total_classes
+        progress_bar.progress(progress)
+
+        # Get Mendel_ID
+        mendel_id = get_mendel_id(cls, namespaces)
+
+        # Get Codes
+        codes_list = get_codes(cls, namespaces)
+        if not codes_list:
+            continue
+
+        # Convert codes to lowercase for case-insensitive matching
+        codes_list_lower = set(code.lower() for code in codes_list)
+
+        # Perform exact matching using set intersection
+        matches = codes_list_lower.intersection(set(codes_lower.keys()))
+
+        if matches:
+            # Get the class label
+            class_label = get_class_label(cls, namespaces)
+
+            # Retrieve original search terms that matched
+            original_search_terms = []
+            for match in matches:
+                original_search_terms.extend(codes_lower[match])
+
+            # Append the result
+            results.append({
+                'Original Search Term': '; '.join(set(original_search_terms)),
+                'Mendel_ID': mendel_id,
+                'Class_Label': class_label,
+                'Codes': '; '.join(codes_list),
+                'Matched Codes': '; '.join({code for code in codes_list if code.lower() in matches})
+            })
+
+            # Log the match
+            logger.info(f"Code match found: Mendel_ID: {mendel_id}, Class_Label: {class_label}, Original Search Term: {', '.join(set(original_search_terms))}")
+
+    # Convert results to DataFrame
+    results_df = pd.DataFrame(results)
+    return results_df
+
+def process_owl_file_code_value_search(owl_content, codes_input, logger):
+    # The code for relaxed code value search processing goes here
+    # For brevity, including the implementation
+
+    # Split the codes and strip whitespace
+    codes = [code.strip() for code in codes_input.split('||') if code.strip()]
+
+    # Clean up the user input codes: remove spaces, dots, special characters, make lowercase
+    def clean_code(code):
+        return re.sub(r'[^A-Za-z0-9]', '', code).lower()
+
+    # Create a mapping from cleaned code to original code(s)
+    cleaned_to_original = {}
+    for code in codes:
+        cleaned = clean_code(code)
+        cleaned_to_original.setdefault(cleaned, []).append(code)
+
+    codes_cleaned = set(cleaned_to_original.keys())
+
+    # Parse the OWL file
+    logger.info('Parsing the OWL file...')
+    try:
+        tree = etree.parse(owl_content)
+        root = tree.getroot()
+        logger.info('OWL file parsed successfully.')
+    except Exception as e:
+        logger.error(f"Error parsing OWL file: {e}")
+        raise
+
+    # Define the namespaces
+    namespaces = {
+        'owl': 'http://www.w3.org/2002/07/owl#',
+        'owl0': 'http://www.w3.org/2002/07/owl#',
+        'rdf': 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+        'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
+        'xml': 'http://www.w3.org/XML/1998/namespace',
+        'xsd': 'http://www.w3.org/2001/XMLSchema#',
+        'www': 'http://www.w3.org/2002/07/',
+        'amr': 'http://www.semanticweb.org/amr/ontologies/2018/',
+    }
+
+    # Find all Class elements
+    classes = root.xpath('//owl0:Class', namespaces=namespaces)
+    if not classes:
+        classes = root.xpath('//owl:Class', namespaces=namespaces)
+    total_classes = len(classes)
+    logger.info(f'Found {total_classes} classes in the OWL file.')
+
+    # Initialize a list to store results
+    results = []
+
+    # Progress bar
+    progress_bar = st.progress(0)
+
+    # Iterate over the classes
+    logger.info('Searching for Codes with relaxed matching...')
+    for idx, cls in enumerate(classes):
+        # Update progress bar
+        progress_bar.progress((idx + 1) / total_classes)
+
+        # Get Mendel_ID
+        mendel_id = get_mendel_id(cls, namespaces)
+
+        # Get Codes
+        codes_list = get_codes(cls, namespaces)
+        if not codes_list:
+            continue
+
+        # Process each code
+        matched_codes = []
+        original_search_terms = []
+        for code_entry in codes_list:
+            # Assume code_entry is in format "coding system: code value"
+            # Split by ':', take the code value
+            parts = code_entry.split(':')
+            if len(parts) >= 2:
+                code_value = ':'.join(parts[1:]).strip()
+            else:
+                # If no ':', assume the whole code_entry is the code value
+                code_value = code_entry.strip()
+
+            # Clean up code value
+            code_value_cleaned = clean_code(code_value)
+
+            # Check if code_value_cleaned matches any of the user input codes
+            if code_value_cleaned in codes_cleaned:
+                matched_codes.append(code_entry)
+                original_search_terms.extend(cleaned_to_original[code_value_cleaned])
+
+        if matched_codes:
+            # Get the class label
+            class_label = get_class_label(cls, namespaces)
+
+            # Append the result
+            results.append({
+                'Original Search Term': '; '.join(set(original_search_terms)),
+                'Mendel_ID': mendel_id,
+                'Class_Label': class_label,
+                'Codes': '; '.join(codes_list),
+                'Matched Codes': '; '.join(matched_codes)
+            })
+
+            # Log the match
+            logger.info(f"Code value match found: Mendel_ID: {mendel_id}, Class_Label: {class_label}, Original Search Term: {', '.join(set(original_search_terms))}")
+
+    # Convert results to DataFrame
+    results_df = pd.DataFrame(results)
+    return results_df
+
+def process_owl_file_code_value_semi_relaxed_search(owl_content, codes_input, logger):
+    # The code for semi-relaxed code value search processing goes here
+    # For brevity, including the implementation
+
+    # Split the codes and strip whitespace
+    codes = [code.strip() for code in codes_input.split('||') if code.strip()]
+
+    # Clean up the user input codes: remove dots, make lowercase
+    def clean_code(code):
+        return code.replace('.', '').lower()
+
+    # Create a mapping from cleaned code to original code(s)
+    cleaned_to_original = {}
+    for code in codes:
+        cleaned = clean_code(code)
+        cleaned_to_original.setdefault(cleaned, []).append(code)
+
+    codes_cleaned = set(cleaned_to_original.keys())
+
+    # Parse the OWL file
+    logger.info('Parsing the OWL file...')
+    try:
+        tree = etree.parse(owl_content)
+        root = tree.getroot()
+        logger.info('OWL file parsed successfully.')
+    except Exception as e:
+        logger.error(f"Error parsing OWL file: {e}")
+        raise
+
+    # Define the namespaces (same as before)
+    namespaces = {
+        'owl': 'http://www.w3.org/2002/07/owl#',
+        'owl0': 'http://www.w3.org/2002/07/owl#',
+        'rdf': 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+        'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
+        'xml': 'http://www.w3.org/XML/1998/namespace',
+        'xsd': 'http://www.w3.org/2001/XMLSchema#',
+        'www': 'http://www.w3.org/2002/07/',
+        'amr': 'http://www.semanticweb.org/amr/ontologies/2018/',
+    }
+
+    # Find all Class elements
+    classes = root.xpath('//owl0:Class', namespaces=namespaces)
+    if not classes:
+        classes = root.xpath('//owl:Class', namespaces=namespaces)
+    total_classes = len(classes)
+    logger.info(f'Found {total_classes} classes in the OWL file.')
+
+    # Initialize a list to store results
+    results = []
+
+    # Progress bar
+    progress_bar = st.progress(0)
+
+    # Iterate over the classes
+    logger.info('Searching for Codes with semi-relaxed matching...')
+    for idx, cls in enumerate(classes):
+        # Update progress bar
+        progress_bar.progress((idx + 1) / total_classes)
+
+        # Get Mendel_ID
+        mendel_id = get_mendel_id(cls, namespaces)
+
+        # Get Codes
+        codes_list = get_codes(cls, namespaces)
+        if not codes_list:
+            continue
+
+        # Process each code
+        matched_codes = []
+        original_search_terms = []
+        for code_entry in codes_list:
+            # Assume code_entry is in format "coding system: code value"
+            # Split by ':', take the code value
+            parts = code_entry.split(':')
+            if len(parts) >= 2:
+                code_value = ':'.join(parts[1:]).strip()
+            else:
+                # If no ':', assume the whole code_entry is the code value
+                code_value = code_entry.strip()
+
+            # Clean up code value
+            code_value_cleaned = clean_code(code_value)
+
+            # Check if code_value_cleaned matches any of the user input codes
+            if code_value_cleaned in codes_cleaned:
+                matched_codes.append(code_entry)
+                original_search_terms.extend(cleaned_to_original[code_value_cleaned])
+
+        if matched_codes:
+            # Get the class label
+            class_label = get_class_label(cls, namespaces)
+
+            # Append the result
+            results.append({
+                'Original Search Term': '; '.join(set(original_search_terms)),
+                'Mendel_ID': mendel_id,
+                'Class_Label': class_label,
+                'Codes': '; '.join(codes_list),
+                'Matched Codes': '; '.join(matched_codes)
+            })
+
+            # Log the match
+            logger.info(f"Code value match found: Mendel_ID: {mendel_id}, Class_Label: {class_label}, Original Search Term: {', '.join(set(original_search_terms))}")
+
+    # Convert results to DataFrame
+    results_df = pd.DataFrame(results)
+    return results_df
+
+def get_mendel_id(cls, namespaces):
+    # Get Mendel_ID
+    mendel_id_elems = cls.xpath('.//owl0:Mendel_ID', namespaces=namespaces)
+    if not mendel_id_elems:
+        mendel_id_elems = cls.xpath('.//*[local-name()="Mendel_ID"]')
+    mendel_id = mendel_id_elems[0].text.strip() if mendel_id_elems else None
+    return mendel_id
+
+def get_synonyms(cls, namespaces):
+    # Get Synonyms
+    synonyms_elems = cls.xpath('.//owl0:Synonyms', namespaces=namespaces)
+    if not synonyms_elems:
+        synonyms_elems = cls.xpath('.//*[local-name()="Synonyms"]')
+    if synonyms_elems:
+        synonyms_text = synonyms_elems[0].text or ''
+        synonyms = [syn.strip() for syn in synonyms_text.replace('\n', ';').split(';') if syn.strip()]
+    else:
+        synonyms = []
+    return synonyms
+
+def get_class_label(cls, namespaces):
+    # Get the class label
+    label_elems = cls.xpath('.//rdfs:label', namespaces=namespaces)
+    if not label_elems:
+        label_elems = cls.xpath('.//*[local-name()="label"]')
+    class_label = label_elems[0].text.strip() if label_elems else 'No label'
+    return class_label
+
+def get_codes(cls, namespaces):
+    # Get Codes elements
+    codes_elems = cls.xpath('.//owl0:Codes', namespaces=namespaces)
+    if not codes_elems:
+        codes_elems = cls.xpath('.//owl:Codes', namespaces=namespaces)
+    if not codes_elems:
+        codes_elems = cls.xpath('.//rdfs:Codes', namespaces=namespaces)
+    if not codes_elems:
+        codes_elems = cls.xpath('.//*[local-name()="Codes"]')
+
+    codes_list = []
+    for code_elem in codes_elems:
+        code_text = code_elem.text or ''
+        codes = [code.strip() for code in re.split(';|\n', code_text) if code.strip()]
+        codes_list.extend(codes)
+    return codes_list
+
+if __name__ == '__main__':
+    main()
