@@ -180,24 +180,38 @@ with st.sidebar:
 st.header("Extract Children from OWL File")
 
 st.subheader("Extract Children")
-branch_root_id = st.text_input("Enter Root Mendel ID for Children Extraction")
+branch_root_ids_input = st.text_input("Enter Root Mendel ID(s) for Children Extraction (separated by '||')")
 
 if st.button('Extract Children'):
-    if branch_root_id and selected_file:
+    if branch_root_ids_input and selected_file:
+        # Parse the input into a list of Mendel IDs
+        branch_root_ids = [mid.strip() for mid in branch_root_ids_input.split('||') if mid.strip()]
         owl_file_path = os.path.join(UPLOAD_DIR, selected_file)
 
         try:
-            # Parse the OWL file
+            # Parse the OWL file once
             tree = etree.parse(owl_file_path)
             root = tree.getroot()
 
-            # Extract the children
-            branch_data = extract_children(root, branch_root_id)
-
-            if branch_data:
-                branch_df = pd.DataFrame(branch_data, columns=["Mendel ID", "Label", "Label::Mendel ID"])
+            all_branch_data = []
+            for branch_root_id in branch_root_ids:
+                # Extract the children for each Mendel ID
+                branch_data = extract_children(root, branch_root_id)
+                if branch_data:
+                    # Add the root Mendel ID to each result
+                    for data in branch_data:
+                        # data is (mendel_id, label, label::mendel_id)
+                        all_branch_data.append((branch_root_id, data[0], data[1], data[2]))
+                else:
+                    st.warning(f"No data extracted for the given Root Mendel ID: {branch_root_id}")
+            if all_branch_data:
+                branch_df = pd.DataFrame(all_branch_data, columns=["Root Mendel ID", "Mendel ID", "Label", "Label::Mendel ID"])
                 st.write("Extracted Children:")
                 st.dataframe(branch_df)
+
+                # Option to download the DataFrame as CSV
+                csv = branch_df.to_csv(index=False).encode('utf-8')
+                st.download_button("Download CSV", data=csv, file_name='extracted_children.csv', mime='text/csv')
 
                 # Prepare the output string in the desired format
                 label_mendel_id_list = branch_df['Label::Mendel ID'].tolist()
@@ -206,31 +220,41 @@ if st.button('Extract Children'):
                 # Display in text area
                 st.text_area("Editable Output", value=output_string, height=200)
             else:
-                st.warning("No data extracted for the given Root Mendel ID.")
+                st.warning("No data extracted for the given Root Mendel IDs.")
         except Exception as e:
             st.error(f"An error occurred: {str(e)}")
     else:
-        st.error("Please enter a Mendel ID and select an OWL file.")
+        st.error("Please enter Mendel ID(s) and select an OWL file.")
 
 st.header("Extract Parents from OWL File")
 
 st.subheader("Extract Parents")
-parent_root_id = st.text_input("Enter Mendel ID for Parents Extraction")
+parent_root_ids_input = st.text_input("Enter Mendel ID(s) for Parents Extraction (separated by '||')")
 
 if st.button('Extract Parents'):
-    if parent_root_id and selected_file:
+    if parent_root_ids_input and selected_file:
+        # Parse the input into a list of Mendel IDs
+        parent_root_ids = [mid.strip() for mid in parent_root_ids_input.split('||') if mid.strip()]
         owl_file_path = os.path.join(UPLOAD_DIR, selected_file)
 
         try:
-            # Parse the OWL file
+            # Parse the OWL file once
             tree = etree.parse(owl_file_path)
             root = tree.getroot()
 
-            # Extract the parents
-            parent_data = extract_parents(root, parent_root_id)
-
-            if parent_data:
-                parent_df = pd.DataFrame(parent_data, columns=["Mendel ID", "Label", "Label::Mendel ID", "Level"])
+            all_parent_data = []
+            for parent_root_id in parent_root_ids:
+                # Extract the parents for each Mendel ID
+                parent_data = extract_parents(root, parent_root_id)
+                if parent_data:
+                    # Add the root Mendel ID to each result
+                    for data in parent_data:
+                        # data is (mendel_id, label, label::mendel_id, level)
+                        all_parent_data.append((parent_root_id, data[0], data[1], data[2], data[3]))
+                else:
+                    st.warning(f"No parents found for the given Mendel ID: {parent_root_id}")
+            if all_parent_data:
+                parent_df = pd.DataFrame(all_parent_data, columns=["Root Mendel ID", "Mendel ID", "Label", "Label::Mendel ID", "Level"])
 
                 # Create an indented label to represent hierarchy
                 parent_df['Indented Label'] = parent_df.apply(
@@ -239,7 +263,11 @@ if st.button('Extract Parents'):
                 parent_df['Indented Label::Mendel ID'] = parent_df['Indented Label'] + '::' + parent_df['Mendel ID']
 
                 st.write("Extracted Parents (Including Multiple Inheritance):")
-                st.dataframe(parent_df[["Mendel ID", "Indented Label", "Label::Mendel ID", "Level"]])
+                st.dataframe(parent_df[["Root Mendel ID", "Mendel ID", "Indented Label", "Label::Mendel ID", "Level"]])
+
+                # Option to download the DataFrame as CSV
+                csv = parent_df.to_csv(index=False).encode('utf-8')
+                st.download_button("Download CSV", data=csv, file_name='extracted_parents.csv', mime='text/csv')
 
                 # Prepare the output string in the desired format
                 label_mendel_id_list = parent_df['Indented Label::Mendel ID'].tolist()
@@ -248,8 +276,8 @@ if st.button('Extract Parents'):
                 # Display in text area
                 st.text_area("Editable Output", value=output_string, height=200)
             else:
-                st.warning("No parents found for the given Mendel ID.")
+                st.warning("No parents found for the given Mendel IDs.")
         except Exception as e:
             st.error(f"An error occurred: {str(e)}")
     else:
-        st.error("Please enter a Mendel ID and select an OWL file.")
+        st.error("Please enter Mendel ID(s) and select an OWL file.")
