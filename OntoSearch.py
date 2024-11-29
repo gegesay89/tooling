@@ -796,4 +796,3 @@ def get_codes(cls, namespaces):
 
 if __name__ == '__main__':
     main()
-please make this code extracts the Code values when it does the mendel id search, leave everything else as is
