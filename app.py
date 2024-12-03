@@ -60,11 +60,14 @@ def main():
                 st.header("Updated Target DataFrame")
                 st.dataframe(updated_target_df)
 
+               # Extract the target file name
+                target_file_name = os.path.basename(target_file.name)
+
                 # Download link for the updated target file
                 st.download_button(
                     label="Download Updated Target CSV",
                     data=updated_target_df.to_csv(index=False),
-                    file_name="updated_target.csv",
+                    file_name=target_file_name,
                     mime="text/csv"
                 )
             except Exception as e:
