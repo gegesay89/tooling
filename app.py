@@ -115,10 +115,10 @@ def generate_frequency_report(folder_path):
 
 # Main Streamlit App
 def main():
-    st.title("Data Management Suite")
+    st.title("The Groundtruth Handler")
 
     # Tabs for functionalities
-    tabs = st.tabs(["Map and Copy Data", "Column Frequency Report", "Detailed Frequency Report"])
+    tabs = st.tabs(["MCD (Map, Copy and Download)", "Count Generator", "Unique Frequency Genrator"])
 
     # Tab 1: Map and Copy Data
     with tabs[0]:
