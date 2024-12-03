@@ -1,9 +1,10 @@
 import streamlit as st
 import pandas as pd
 import os
+import zipfile
+import tempfile
 
 
-# Function to map and copy data
 def map_and_copy_data(source_df, target_df, source_mapping, target_mapping):
     """
     Copies data from the source DataFrame to the target DataFrame based on header mappings.
@@ -33,7 +34,22 @@ def map_and_copy_data(source_df, target_df, source_mapping, target_mapping):
     return target_df
 
 
-# Function to generate a column frequency report
+def extract_zip(uploaded_zip):
+    """
+    Extracts a ZIP file to a temporary directory.
+
+    Args:
+        uploaded_zip: Streamlit uploaded file.
+
+    Returns:
+        str: Path to the temporary directory containing extracted files.
+    """
+    temp_dir = tempfile.mkdtemp()
+    with zipfile.ZipFile(uploaded_zip, 'r') as z:
+        z.extractall(temp_dir)
+    return temp_dir
+
+
 def generate_column_frequency_report(folder_path):
     """
     Generates a frequency report for all CSV files in a folder, summing the non-empty values for each column.
@@ -64,7 +80,6 @@ def generate_column_frequency_report(folder_path):
     return pd.DataFrame(results)
 
 
-# Function to generate a detailed frequency report
 def generate_frequency_report(folder_path):
     """
     Generates a detailed frequency report for all CSV files in a folder.
@@ -138,10 +153,11 @@ def main():
     # Tab 2: Column Frequency Report
     with tabs[1]:
         st.header("Column Frequency Report")
-        folder_path = st.text_input("Enter Folder Path for CSV Files")
+        uploaded_zip = st.file_uploader("Upload ZIP File Containing CSVs", type="zip")
 
-        if st.button("Generate Column Frequency Report"):
-            if folder_path:
+        if uploaded_zip and st.button("Generate Column Frequency Report"):
+            try:
+                folder_path = extract_zip(uploaded_zip)
                 frequency_report = generate_column_frequency_report(folder_path)
                 st.dataframe(frequency_report)
                 st.download_button(
@@ -150,27 +166,5 @@ def main():
                     file_name="column_frequency_report.csv",
                     mime="text/csv"
                 )
-            else:
-                st.error("Please enter a valid folder path.")
-
-    # Tab 3: Detailed Frequency Report
-    with tabs[2]:
-        st.header("Detailed Frequency Report")
-        folder_path = st.text_input("Enter Folder Path for CSV Files (Detailed)")
-
-        if st.button("Generate Detailed Frequency Report"):
-            if folder_path:
-                detailed_report = generate_frequency_report(folder_path)
-                st.dataframe(detailed_report)
-                st.download_button(
-                    label="Download Detailed Frequency Report",
-                    data=detailed_report.to_csv(index=False),
-                    file_name="detailed_frequency_report.csv",
-                    mime="text/csv"
-                )
-            else:
-                st.error("Please enter a valid folder path.")
-
-
-if __name__ == "__main__":
-    main()
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
