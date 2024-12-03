@@ -3,6 +3,7 @@ import pandas as pd
 import os
 
 
+# Function to map and copy data
 def map_and_copy_data(source_df, target_df, source_mapping, target_mapping):
     """
     Copies data from the source DataFrame to the target DataFrame based on header mappings.
@@ -28,54 +29,148 @@ def map_and_copy_data(source_df, target_df, source_mapping, target_mapping):
             st.write(f"No data to copy for '{tgt_col}' (preserved as empty).")
         else:
             st.write(f"Column '{tgt_col}' does not exist in the target file.")
-    
+
     return target_df
 
-def main():
-    st.title("V1=>V2 Mapper")
 
-    # File upload
-    st.header("Upload CSV Files")
-    source_file = st.file_uploader("Upload Source CSV", type="csv")
-    target_file = st.file_uploader("Upload Target CSV", type="csv")
+# Function to generate a column frequency report
+def generate_column_frequency_report(folder_path):
+    """
+    Generates a frequency report for all CSV files in a folder, summing the non-empty values for each column.
 
-    # Input for column mappings
-    st.header("Column Mappings")
-    source_mapping_input = st.text_area("Source Columns", "")
-    target_mapping_input = st.text_area("Target Columns", "")
+    Args:
+        folder_path (str): Path to the folder containing CSV files.
 
-    if st.button("Map and Copy Data"):
-        if source_file and target_file and source_mapping_input and target_mapping_input:
+    Returns:
+        pd.DataFrame: Frequency report DataFrame.
+    """
+    results = []
+
+    for file_name in os.listdir(folder_path):
+        if file_name.endswith('.csv'):
+            file_path = os.path.join(folder_path, file_name)
             try:
-                # Load the CSV files
-                source_df = pd.read_csv(source_file)
-                target_df = pd.read_csv(target_file)
+                df = pd.read_csv(file_path)
+                for column in df.columns:
+                    non_empty_count = df[column].notna().sum()  # Count non-empty values
+                    results.append({
+                        'Sheet Name': file_name,
+                        'Header Name': column,
+                        'Frequency': non_empty_count
+                    })
+            except Exception as e:
+                st.error(f"Error processing {file_name}: {e}")
 
-                # Parse the column mappings
-                source_mapping = [col.strip() for col in source_mapping_input.split("\n")]
-                target_mapping = [col.strip() for col in target_mapping_input.split("\n")]
+    return pd.DataFrame(results)
 
-                # Perform the mapping and copying
-                updated_target_df = map_and_copy_data(source_df, target_df, source_mapping, target_mapping)
 
-                # Display the result and provide a download link
-                st.header("Updated Target DataFrame")
-                st.dataframe(updated_target_df)
+# Function to generate a detailed frequency report
+def generate_frequency_report(folder_path):
+    """
+    Generates a detailed frequency report for all CSV files in a folder.
 
-               # Extract the target file name
-                target_file_name = os.path.basename(target_file.name)
+    Args:
+        folder_path (str): Path to the folder containing CSV files.
 
-                # Download link for the updated target file
+    Returns:
+        pd.DataFrame: Detailed frequency report DataFrame.
+    """
+    results = []
+
+    for file_name in os.listdir(folder_path):
+        if file_name.endswith('.csv'):
+            file_path = os.path.join(folder_path, file_name)
+            try:
+                df = pd.read_csv(file_path)
+                for column in df.columns:
+                    freq = df[column].value_counts().reset_index()
+                    freq.columns = ['Value', 'Frequency']
+                    for _, row in freq.iterrows():
+                        results.append({
+                            'Sheet Name': file_name,
+                            'Header Name': column,
+                            'Value': row['Value'],
+                            'Frequency': row['Frequency']
+                        })
+            except Exception as e:
+                st.error(f"Error processing {file_name}: {e}")
+
+    return pd.DataFrame(results)
+
+
+# Main Streamlit App
+def main():
+    st.title("Data Management Suite")
+
+    # Tabs for functionalities
+    tabs = st.tabs(["Map and Copy Data", "Column Frequency Report", "Detailed Frequency Report"])
+
+    # Tab 1: Map and Copy Data
+    with tabs[0]:
+        st.header("Map and Copy Data")
+        source_file = st.file_uploader("Upload Source CSV", type="csv")
+        target_file = st.file_uploader("Upload Target CSV", type="csv")
+        source_mapping_input = st.text_area("Source Columns (one per line)", "")
+        target_mapping_input = st.text_area("Target Columns (one per line)", "")
+
+        if st.button("Run Mapping"):
+            if source_file and target_file and source_mapping_input and target_mapping_input:
+                try:
+                    source_df = pd.read_csv(source_file)
+                    target_df = pd.read_csv(target_file)
+                    source_mapping = [col.strip() for col in source_mapping_input.split("\n")]
+                    target_mapping = [col.strip() for col in target_mapping_input.split("\n")]
+
+                    updated_target_df = map_and_copy_data(source_df, target_df, source_mapping, target_mapping)
+
+                    st.dataframe(updated_target_df)
+                    st.download_button(
+                        label="Download Updated Target CSV",
+                        data=updated_target_df.to_csv(index=False),
+                        file_name=os.path.basename(target_file.name),
+                        mime="text/csv"
+                    )
+                except Exception as e:
+                    st.error(f"An error occurred: {e}")
+            else:
+                st.error("Please upload both files and provide column mappings.")
+
+    # Tab 2: Column Frequency Report
+    with tabs[1]:
+        st.header("Column Frequency Report")
+        folder_path = st.text_input("Enter Folder Path for CSV Files")
+
+        if st.button("Generate Column Frequency Report"):
+            if folder_path:
+                frequency_report = generate_column_frequency_report(folder_path)
+                st.dataframe(frequency_report)
                 st.download_button(
-                    label="Download Updated Target CSV",
-                    data=updated_target_df.to_csv(index=False),
-                    file_name=target_file_name,
+                    label="Download Column Frequency Report",
+                    data=frequency_report.to_csv(index=False),
+                    file_name="column_frequency_report.csv",
                     mime="text/csv"
                 )
-            except Exception as e:
-                st.error(f"An error occurred: {e}")
-        else:
-            st.error("Please upload both files and provide column mappings.")
+            else:
+                st.error("Please enter a valid folder path.")
+
+    # Tab 3: Detailed Frequency Report
+    with tabs[2]:
+        st.header("Detailed Frequency Report")
+        folder_path = st.text_input("Enter Folder Path for CSV Files (Detailed)")
+
+        if st.button("Generate Detailed Frequency Report"):
+            if folder_path:
+                detailed_report = generate_frequency_report(folder_path)
+                st.dataframe(detailed_report)
+                st.download_button(
+                    label="Download Detailed Frequency Report",
+                    data=detailed_report.to_csv(index=False),
+                    file_name="detailed_frequency_report.csv",
+                    mime="text/csv"
+                )
+            else:
+                st.error("Please enter a valid folder path.")
+
 
 if __name__ == "__main__":
     main()
