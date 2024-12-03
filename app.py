@@ -122,7 +122,7 @@ def main():
 
     # Tab 1: Map and Copy Data
     with tabs[0]:
-        st.header("Map and Copy Data")
+        st.header("MCD")
         source_file = st.file_uploader("Upload Source CSV", type="csv")
         target_file = st.file_uploader("Upload Target CSV", type="csv")
         source_mapping_input = st.text_area("Source Columns (one per line)", "")
@@ -152,7 +152,7 @@ def main():
 
     # Tab 2: Column Frequency Report
     with tabs[1]:
-        st.header("Column Frequency Report")
+        st.header("Count Generator")
         uploaded_zip = st.file_uploader("Upload ZIP File Containing CSVs", type="zip")
 
         if uploaded_zip and st.button("Generate Column Frequency Report"):
@@ -171,7 +171,7 @@ def main():
 
     # Tab 3: Detailed Frequency Report
     with tabs[2]:
-        st.header("Detailed Frequency Report")
+        st.header("Unique Frequency Genrator")
         uploaded_zip = st.file_uploader("Upload ZIP File Containing CSVs (Detailed)", type="zip")
 
         if uploaded_zip and st.button("Generate Detailed Frequency Report"):
