@@ -168,3 +168,26 @@ def main():
                 )
             except Exception as e:
                 st.error(f"An error occurred: {e}")
+
+    # Tab 3: Detailed Frequency Report
+    with tabs[2]:
+        st.header("Detailed Frequency Report")
+        uploaded_zip = st.file_uploader("Upload ZIP File Containing CSVs (Detailed)", type="zip")
+
+        if uploaded_zip and st.button("Generate Detailed Frequency Report"):
+            try:
+                folder_path = extract_zip(uploaded_zip)
+                detailed_report = generate_frequency_report(folder_path)
+                st.dataframe(detailed_report)
+                st.download_button(
+                    label="Download Detailed Frequency Report",
+                    data=detailed_report.to_csv(index=False),
+                    file_name="detailed_frequency_report.csv",
+                    mime="text/csv"
+                )
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
+
+
+if __name__ == "__main__":
+    main()
