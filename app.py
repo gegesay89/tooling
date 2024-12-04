@@ -5,35 +5,6 @@ import zipfile
 import tempfile
 
 
-def map_and_copy_data(source_df, target_df, source_mapping, target_mapping):
-    """
-    Copies data from the source DataFrame to the target DataFrame based on header mappings.
-
-    Args:
-        source_df (pd.DataFrame): Source DataFrame.
-        target_df (pd.DataFrame): Target DataFrame.
-        source_mapping (list): List of source column headers.
-        target_mapping (list): List of target column headers.
-
-    Returns:
-        pd.DataFrame: Updated target DataFrame.
-    """
-    if len(source_mapping) != len(target_mapping):
-        st.error("Source and target mappings must have the same length.")
-        return target_df
-
-    for src_col, tgt_col in zip(source_mapping, target_mapping):
-        if src_col in source_df.columns and tgt_col in target_df.columns:
-            target_df[tgt_col] = source_df[src_col]
-            st.write(f"Copied data from '{src_col}' to '{tgt_col}'")
-        elif tgt_col in target_df.columns:
-            st.write(f"No data to copy for '{tgt_col}' (preserved as empty).")
-        else:
-            st.write(f"Column '{tgt_col}' does not exist in the target file.")
-
-    return target_df
-
-
 def extract_zip(uploaded_zip):
     """
     Extracts a ZIP file to a temporary directory.
@@ -66,7 +37,8 @@ def generate_column_frequency_report(folder_path):
         if file_name.endswith('.csv'):
             file_path = os.path.join(folder_path, file_name)
             try:
-                df = pd.read_csv(file_path)
+                df = pd.read_csv(file_path, encoding='utf-8')
+                df.columns = df.columns.str.strip()  # Normalize column headers
                 for column in df.columns:
                     non_empty_count = df[column].notna().sum()  # Count non-empty values
                     results.append({
@@ -96,7 +68,8 @@ def generate_frequency_report(folder_path):
         if file_name.endswith('.csv'):
             file_path = os.path.join(folder_path, file_name)
             try:
-                df = pd.read_csv(file_path)
+                df = pd.read_csv(file_path, encoding='utf-8')
+                df.columns = df.columns.str.strip()  # Normalize column headers
                 for column in df.columns:
                     freq = df[column].value_counts().reset_index()
                     freq.columns = ['Value', 'Frequency']
@@ -113,12 +86,11 @@ def generate_frequency_report(folder_path):
     return pd.DataFrame(results)
 
 
-# Main Streamlit App
 def main():
     st.title("The Groundtruth Handler")
 
     # Tabs for functionalities
-    tabs = st.tabs(["MCD (Map, Copy and Download)", "Count Generator", "Unique Frequency Genrator"])
+    tabs = st.tabs(["MCD (Map, Copy and Download)", "Count Generator", "Unique Frequency Generator"])
 
     # Tab 1: Map and Copy Data
     with tabs[0]:
@@ -171,7 +143,7 @@ def main():
 
     # Tab 3: Detailed Frequency Report
     with tabs[2]:
-        st.header("Unique Frequency Genrator")
+        st.header("Unique Frequency Generator")
         uploaded_zip = st.file_uploader("Upload ZIP File Containing CSVs (Detailed)", type="zip")
 
         if uploaded_zip and st.button("Generate Detailed Frequency Report"):
