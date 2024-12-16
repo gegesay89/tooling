@@ -1,5 +1,4 @@
 
-zipfile
 pandas 
 lxml
 streamlit
