@@ -31,22 +31,20 @@ def parse_owl_file(owl_file_path):
     ns_rdfs = 'http://www.w3.org/2000/01/rdf-schema#'
 
     data = OwlData()
-
-    # Temporary structure to hold each child's parent "about" references
     child_about_to_parents = defaultdict(set)
 
-    # First pass (iterparse) to collect about -> mendel_id, label, and immediate subClassOf references
+    # First pass (iterparse) to collect about->mendel_id, label, and immediate subClassOf references
     context = etree.iterparse(owl_file_path, events=('end',), tag=f"{{{ns_owl}}}Class")
     for event, class_element in context:
         about = class_element.get(f"{{{ns_rdf}}}about")
         if about:
-            # Extract mendel_id if present
+            # Extract mendel_id
             mendel_id_elem = class_element.find(f".//{{*}}Mendel_ID")
             if mendel_id_elem is not None and mendel_id_elem.text:
                 mendel_id = mendel_id_elem.text.strip()
                 data.about_to_mendel_id[about] = mendel_id
 
-                # Extract label if present
+                # Extract label
                 label_elem = class_element.find(f".//{{{ns_rdfs}}}label")
                 label = (label_elem.text.strip() if label_elem is not None and label_elem.text else 'No label')
                 data.mendel_id_to_label[mendel_id] = label
@@ -62,7 +60,7 @@ def parse_owl_file(owl_file_path):
         while class_element.getprevious() is not None:
             del class_element.getparent()[0]
 
-    # Second pass: Convert about references to actual mendel_ids 
+    # Second pass: Convert about references to actual mendel_ids
     for child_about, parent_abouts in child_about_to_parents.items():
         child_id = data.about_to_mendel_id.get(child_about)
         if not child_id:
@@ -76,8 +74,7 @@ def parse_owl_file(owl_file_path):
     return data
 
 def extract_children(data, root_mendel_id):
-    """ Given a loaded OwlData structure and a root mendel_id,
-        recursively find all descendants. """
+    """Recursively find all descendants of a root_mendel_id."""
     visited = set()
     result_ids = set()
 
@@ -100,9 +97,7 @@ def extract_children(data, root_mendel_id):
     return children_info
 
 def extract_parents(data, root_mendel_id):
-    """ Given a loaded OwlData structure and a root mendel_id,
-        find all ancestor paths (including multiple inheritance). """
-
+    """Find all ancestor paths of a root_mendel_id (handling multiple inheritance)."""
     all_paths = []
     visited = set()
 
@@ -125,13 +120,10 @@ def extract_parents(data, root_mendel_id):
 
     backtrack(root_mendel_id, [])
 
-    # Build up (mendel_id, label, label::mendel_id, level) for each ancestor in each path
-    # Paths currently go "child->parent->grandparent...". We will process them in that order.
+    # Build (mendel_id, label, label::mendel_id, level) for each ancestor in each path
     parent_list = []
     for path in all_paths:
-        # Reverse the path so it goes from the root to the child
-        # e.g., [grandparent, parent, child] if you want top->down
-        rev_path = path[::-1]
+        rev_path = path[::-1]  # reverse so that the top-level parent is first
         for level, mid in enumerate(rev_path):
             lbl = data.mendel_id_to_label.get(mid, 'No label')
             parent_list.append((mid, lbl, f"{lbl}::{mid}", level))
@@ -147,7 +139,6 @@ def extract_parents(data, root_mendel_id):
     return unique_parents
 
 # -------------------- STREAMLIT APP --------------------
-
 with st.sidebar:
     uploaded_file = st.file_uploader("Upload a ZIP file containing the OWL file", type="zip")
     if uploaded_file is not None:
@@ -173,32 +164,48 @@ if st.button('Extract Children'):
     if branch_root_ids_input and selected_file:
         root_ids = [m.strip() for m in branch_root_ids_input.split('||') if m.strip()]
         owl_file_path = os.path.join(UPLOAD_DIR, selected_file)
+
         try:
-            # Parse/cached parse of the OWL file
             data = parse_owl_file(owl_file_path)
 
-            all_branches = []
+            # We'll accumulate concept dropdown lines for each root ID
+            child_dropdowns = []
+
             for rid in root_ids:
-                results = extract_children(data, rid)
-                if results:
-                    for child_id, label, label_mid in results:
-                        all_branches.append((rid, child_id, label, label_mid))
+                children = extract_children(data, rid)
+                if children:
+                    # Build a DataFrame specifically for this root ID
+                    columns = ["Root Mendel ID", "Mendel ID", "Label", "Label::Mendel ID"]
+                    child_records = []
+                    for child_id, child_label, child_label_mid in children:
+                        child_records.append((rid, child_id, child_label, child_label_mid))
+
+                    branch_df = pd.DataFrame(child_records, columns=columns)
+                    st.markdown(f"### Extracted Children for: {rid}")
+                    st.dataframe(branch_df)
+
+                    csv_data = branch_df.to_csv(index=False).encode('utf-8')
+                    st.download_button(
+                        f"Download CSV for {rid}",
+                        data=csv_data,
+                        file_name=f'extracted_children_{rid}.csv',
+                        mime='text/csv'
+                    )
+
+                    label_mid_list = branch_df['Label::Mendel ID'].tolist()
+                    concept_line = 'Concept Dropdown {' + '||'.join(label_mid_list) + '}'
+                    child_dropdowns.append(concept_line)
                 else:
-                    st.warning(f"No children found for '{rid}'")
+                    st.warning(f"No children found for root Mendel ID: {rid}")
 
-            if all_branches:
-                branch_df = pd.DataFrame(all_branches, columns=["Root Mendel ID", "Mendel ID", "Label", "Label::Mendel ID"])
-                st.write("Extracted Children:")
-                st.dataframe(branch_df)
-
-                # CSV download
-                csv_data = branch_df.to_csv(index=False).encode('utf-8')
-                st.download_button("Download CSV", data=csv_data, file_name='extracted_children.csv', mime='text/csv')
-
-                # Output string
-                label_mid_list = branch_df['Label::Mendel ID'].tolist()
-                output_str = 'Concept Dropdown {' + '||'.join(label_mid_list) + '}'
-                st.text_area("Editable Output", value=output_str, height=200)
+            # Show all child dropdown lines, each on its own line
+            if child_dropdowns:
+                final_child_output = "\n".join(child_dropdowns)
+                st.text_area(
+                    "Combined Concept Dropdowns for Children",
+                    value=final_child_output,
+                    height=200
+                )
             else:
                 st.warning("No data extracted for the given Root Mendel IDs.")
         except Exception as e:
@@ -218,40 +225,51 @@ if st.button('Extract Parents'):
         try:
             data = parse_owl_file(owl_file_path)
 
-            all_parents = []
+            parent_dropdowns = []
+
             for pid in parent_ids:
                 results = extract_parents(data, pid)
                 if results:
+                    columns = ["Root Mendel ID", "Mendel ID", "Label", "Label::Mendel ID", "Level"]
+                    parent_records = []
                     for mid, lbl, lbl_mid, lvl in results:
-                        all_parents.append((pid, mid, lbl, lbl_mid, lvl))
+                        parent_records.append((pid, mid, lbl, lbl_mid, lvl))
+
+                    parent_df = pd.DataFrame(parent_records, columns=columns)
+                    # Create an indented label column
+                    parent_df['Indented Label'] = parent_df.apply(
+                        lambda row: ('--' * row['Level']) + '> ' + row['Label'],
+                        axis=1
+                    )
+                    parent_df['Indented Label::Mendel ID'] = (
+                        parent_df['Indented Label'] + '::' + parent_df['Mendel ID']
+                    )
+
+                    st.markdown(f"### Extracted Parents for: {pid}")
+                    display_cols = ["Root Mendel ID", "Mendel ID", "Indented Label", "Label::Mendel ID", "Level"]
+                    st.dataframe(parent_df[display_cols])
+
+                    csv_data = parent_df.to_csv(index=False).encode('utf-8')
+                    st.download_button(
+                        f"Download CSV for {pid}",
+                        data=csv_data,
+                        file_name=f'extracted_parents_{pid}.csv',
+                        mime='text/csv'
+                    )
+
+                    indent_label_mid_list = parent_df['Indented Label::Mendel ID'].tolist()
+                    concept_line = 'Concept Dropdown {' + '||'.join(indent_label_mid_list) + '}'
+                    parent_dropdowns.append(concept_line)
                 else:
                     st.warning(f"No parents found for: {pid}")
 
-            if all_parents:
-                columns = ["Root Mendel ID", "Mendel ID", "Label", "Label::Mendel ID", "Level"]
-                parent_df = pd.DataFrame(all_parents, columns=columns)
-
-                # Create an indented label for display
-                parent_df['Indented Label'] = parent_df.apply(
-                    lambda row: ('--' * row['Level']) + '> ' + row['Label'], axis=1
+            if parent_dropdowns:
+                final_parent_output = "\n".join(parent_dropdowns)
+                st.text_area(
+                    "Combined Concept Dropdowns for Parents",
+                    value=final_parent_output,
+                    height=200
                 )
-                parent_df['Indented Label::Mendel ID'] = \
-                    parent_df['Indented Label'] + '::' + parent_df['Mendel ID']
-
-                st.write("Extracted Parents (Including Multiple Inheritance):")
-                display_cols = ["Root Mendel ID", "Mendel ID", "Indented Label", "Label::Mendel ID", "Level"]
-                st.dataframe(parent_df[display_cols])
-
-                # CSV download
-                csv_data = parent_df.to_csv(index=False).encode('utf-8')
-                st.download_button("Download CSV", data=csv_data, file_name='extracted_parents.csv', mime='text/csv')
-
-                # Output string
-                indent_label_mid_list = parent_df['Indented Label::Mendel ID'].tolist()
-                output_str = 'Concept Dropdown {' + '||'.join(indent_label_mid_list) + '}'
-                st.text_area("Editable Output", value=output_str, height=200)
-            else:
-                st.warning("No parents found for the given Mendel IDs.")
         except Exception as e:
             st.error(f"An error occurred: {str(e)}")
     else:
