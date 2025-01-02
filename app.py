@@ -53,7 +53,7 @@ def build_search_query(table_name, user_input, limit=500):
     return query
 
 def main():
-    st.title("Genetic Data Query")
+    st.title("GenieVar")
 
     download_duckdb()
 
