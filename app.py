@@ -7,7 +7,7 @@ import os
 DUCKDB_FILE = "clinvar_data.duckdb"
 
 # Raw file URL for the DuckDB file on GitHub
-DUCKDB_URL = "https://raw.githubusercontent.com/gegesay89/tooling/Clinvar/clinvar_data.duckdb"
+DUCKDB_URL = "https://github.com/gegesay89/tooling/blob/0745ba439fb6bdaf1cf03bae60d8994a1c247d8f/clinvar_data.duckdb"
 
 @st.cache_data
 def download_duckdb():
