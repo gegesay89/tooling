@@ -1,16 +1,38 @@
 import streamlit as st
 import duckdb
+import requests
+import os
+
+# Local file path for DuckDB
+DUCKDB_FILE = "clinvar_data.duckdb"
 
 # Raw file URL for the DuckDB file on GitHub
 DUCKDB_URL = "https://raw.githubusercontent.com/gegesay89/tooling/Clinvar/clinvar_data.duckdb"
 
+@st.cache_data
+def download_duckdb():
+    """
+    Download the DuckDB file from GitHub if it doesn't already exist locally.
+    """
+    if not os.path.exists(DUCKDB_FILE):
+        st.info("Downloading DuckDB file from GitHub. Please wait...")
+        response = requests.get(DUCKDB_URL, stream=True)
+        if response.status_code == 200:
+            with open(DUCKDB_FILE, "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            st.success("Download complete!")
+        else:
+            st.error(f"Failed to download the file: HTTP {response.status_code}")
+    else:
+        st.info("DuckDB file already exists locally. Skipping download.")
+
 @st.cache_resource
 def get_connection():
     """
-    Establish a connection to the DuckDB database file hosted online.
+    Establish a connection to the DuckDB database file.
     """
-    # Connect to the remote DuckDB file
-    return duckdb.connect(f":{DUCKDB_URL}")
+    return duckdb.connect(DUCKDB_FILE)
 
 @st.cache_data
 def get_columns(table_name="clinvar_data"):
@@ -54,14 +76,17 @@ def build_search_query(table_name, user_input, limit=500):
 def main():
     st.title("Genetic Data Query")
 
-    # Step 1: Establish a connection
+    # Step 1: Download the DuckDB file if needed
+    download_duckdb()
+
+    # Step 2: Establish a connection to the database
     try:
         con = get_connection()
     except Exception as e:
         st.error(f"Failed to connect to the DuckDB file: {e}")
         return
 
-    # Step 2: Validate and query the table
+    # Step 3: Validate and query the table
     try:
         st.write("Enter standard names as described in ClinVar. You can search a mutation type, C and P variants, Genes, and more.")
         user_input = st.text_input("Search", "")
