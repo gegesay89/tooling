@@ -20,7 +20,7 @@ def query_database(query):
         return pd.read_sql(query, connection)
 
 # Pagination for large results
-def paginate_dataframe(df, page_size=10):
+def paginate_dataframe(df, page_size=100):
     total_pages = (len(df) + page_size - 1) // page_size
     page = st.number_input(
         "Page number",
@@ -36,15 +36,15 @@ def paginate_dataframe(df, page_size=10):
 
 # Streamlit App
 def main():
-    st.title("ClinVar Variant Database Query")
+    st.title("GENIEVAR")
 
-    st.write("Search across all columns in the table. Enter a value to retrieve matching rows.")
+    st.write("Enter standard names as described in ClinVar; You can search a mutation type, C and P variants, Genes, and more. .")
 
     # Fixed table name
     table_name = "variants"
 
     # Search functionality
-    user_input = st.text_input("Search for a term:", "")
+    user_input = st.text_input("", "")
 
     if st.button("Search"):
         if user_input.strip():
