@@ -13,19 +13,6 @@ def get_connection():
     connection_string = f"mssql+pyodbc://{username}:{password}@{server}/{database}?driver={driver}"
     return create_engine(connection_string)
 
-# Cache table metadata
-@st.cache_data
-def get_tables():
-    engine = get_connection()
-    with engine.connect() as connection:
-        query = """
-        SELECT TABLE_NAME 
-        FROM INFORMATION_SCHEMA.TABLES
-        WHERE TABLE_TYPE = 'BASE TABLE'
-        """
-        tables = pd.read_sql(query, connection)
-        return tables['TABLE_NAME'].tolist()
-
 # Query the database
 def query_database(query):
     engine = get_connection()
@@ -51,16 +38,10 @@ def paginate_dataframe(df, page_size=10):
 def main():
     st.title("ClinVar Variant Database Query")
 
-    st.write("Search across all columns in a selected table. Enter a value to retrieve matching rows.")
+    st.write("Search across all columns in the table. Enter a value to retrieve matching rows.")
 
-    # Fetch available tables
-    tables = get_tables()
-    if not tables:
-        st.error("No tables found in the database.")
-        return
-
-    # Select table
-    selected_table = st.selectbox("Select a table to search:", tables)
+    # Fixed table name
+    table_name = "variants"
 
     # Search functionality
     user_input = st.text_input("Search for a term:", "")
@@ -71,8 +52,20 @@ def main():
                 # Build the query
                 query = f"""
                     SELECT *
-                    FROM {selected_table}
-                    WHERE CONCAT_WS(' ', Type, Name, GeneSymbol, ClinicalSignificance, dbSNP, PhenotypeList, Origin, OriginSimple, Assembly, Chromosome, Cytogenetic, [c-variant], [p-variant]) LIKE '%{user_input}%'
+                    FROM {table_name}
+                    WHERE Type LIKE '%{user_input}%'
+                       OR Name LIKE '%{user_input}%'
+                       OR GeneSymbol LIKE '%{user_input}%'
+                       OR ClinicalSignificance LIKE '%{user_input}%'
+                       OR dbSNP LIKE '%{user_input}%'
+                       OR PhenotypeList LIKE '%{user_input}%'
+                       OR Origin LIKE '%{user_input}%'
+                       OR OriginSimple LIKE '%{user_input}%'
+                       OR Assembly LIKE '%{user_input}%'
+                       OR Chromosome LIKE '%{user_input}%'
+                       OR Cytogenetic LIKE '%{user_input}%'
+                       OR [c-variant] LIKE '%{user_input}%'
+                       OR [p-variant] LIKE '%{user_input}%';
                 """
                 st.info("Running query, please wait...")
                 results = query_database(query)
