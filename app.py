@@ -2,7 +2,8 @@ import pandas as pd
 import streamlit as st
 from sqlalchemy import create_engine
 
-# Create a connection engine using SQLAlchemy
+# Cache database connection
+@st.cache_resource
 def get_connection():
     server = "clinar.database.windows.net"
     database = "clinvar"
@@ -12,7 +13,8 @@ def get_connection():
     connection_string = f"mssql+pyodbc://{username}:{password}@{server}/{database}?driver={driver}"
     return create_engine(connection_string)
 
-# Get the list of tables in the database
+# Cache table metadata
+@st.cache_data
 def get_tables():
     engine = get_connection()
     with engine.connect() as connection:
@@ -30,7 +32,22 @@ def query_database(query):
     with engine.connect() as connection:
         return pd.read_sql(query, connection)
 
-# Streamlit app
+# Pagination for large results
+def paginate_dataframe(df, page_size=10):
+    total_pages = (len(df) + page_size - 1) // page_size
+    page = st.number_input(
+        "Page number",
+        min_value=1,
+        max_value=total_pages,
+        value=1,
+        step=1,
+        format="%d"
+    )
+    start = (page - 1) * page_size
+    end = start + page_size
+    return df.iloc[start:end]
+
+# Streamlit App
 def main():
     st.title("ClinVar Variant Database Query")
 
@@ -51,24 +68,26 @@ def main():
     if st.button("Search"):
         if user_input.strip():
             try:
-                # Build the search query
+                # Build the query
                 query = f"""
                     SELECT *
                     FROM {selected_table}
                     WHERE CONCAT_WS(' ', Type, Name, GeneSymbol, ClinicalSignificance, dbSNP, PhenotypeList, Origin, OriginSimple, Assembly, Chromosome, Cytogenetic, [c-variant], [p-variant]) LIKE '%{user_input}%'
                 """
-                st.info(f"Running query")
+                st.info("Running query, please wait...")
                 results = query_database(query)
 
                 if not results.empty:
                     st.write(f"Found {len(results)} matching rows.")
-                    st.dataframe(results)
+                    # Paginate results
+                    paginated_results = paginate_dataframe(results)
+                    st.dataframe(paginated_results)
                 else:
                     st.warning("No matching rows found.")
             except Exception as e:
                 st.error(f"An error occurred: {e}")
         else:
-            st.warning("Please enter a non-empty search term.")
+            st.warning("Please enter a search term.")
 
 if __name__ == "__main__":
     main()
