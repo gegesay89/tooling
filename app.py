@@ -55,7 +55,7 @@ def main():
                 query = f"""
                     SELECT TOP 500 *
                     FROM {selected_table}
-                    WHERE CONCAT_WS(' ', Type, Name, GeneSymbol, ClinicalSignificance, dbSNP, PhenotypeList, Origin, OriginSimple, Assembly, Chromosome, Cytogenetic, c_variant, p_variant) LIKE '%{user_input}%'
+                    WHERE CONCAT_WS(' ', Type, Name, GeneSymbol, ClinicalSignificance, dbSNP, PhenotypeList, Origin, OriginSimple, Assembly, Chromosome, Cytogenetic, [c-variant], [p-variant]) LIKE '%{user_input}%'
                 """
                 st.info(f"Running query:\n```\n{query}\n```")
                 results = query_database(query)
