@@ -1,0 +1,94 @@
+[
+  {
+    "patient_id": "patient_docx_001",
+    "source_id": "angiocase_0001",
+    "source_type": "case_report",
+    "document_date": "2025-11-19",
+    "dataset_version": "v1.1",
+    "key": "DOCX1",
+    "note_body": "Clinical Case — Angiodysplasia (Heyde’s Syndrome) for 73-year-old male H.M. admitted 2025-11-19 after a mechanical fall. Reports 6-8 weeks of progressive fatigue, dyspnoea (NYHA II→III), lightheadedness, and pallor without overt GI bleeding. Family confirms pallor and breathlessness. Denies haematemesis, melena, PR bleeding, epistaxis, haematuria, easy bruising, abdominal pain, bowel changes, or constitutional symptoms. PMH: hypertension, type 2 diabetes (diet+metformin), CKD3a (eGFR ≈45). Meds: ramipril 5 mg OD, metformin 500 mg BD, atorvastatin 20 mg nocte, OTC multivitamin; no antiplatelets/anticoagulants. Past surgery: left inguinal hernia repair 30 years ago. Social: ex-smoker (20 pack-years, quit 10y), no alcohol, retired accountant living with wife. Exam: pale, HR 88, BP 130/78, systolic ejection murmur 3/6 at RUSB radiating to carotids, lungs clear, abdomen benign, no edema or bruising. Labs: Hb 102 g/L, microcytic indices (MCV 70 fL), platelets 328, WBC 10.5, ferritin 12 ng/mL, iron low/TIBC high, creatinine 1.2, LFTs normal, coagulation normal, FOBT positive. Imaging: ECG NSR, CXR clear. Upper endoscopy negative. Colonoscopy shows flat red lesions in caecum/ascending colon consistent with angiodysplasia. Capsule enteroscopy shows multiple proximal ileal angiodysplasias. Impression: chronic occult GI blood loss from angiodysplasia associated with aortic stenosis (Heyde’s syndrome).",
+    "med_list": "Ramipril 5 mg OD; Metformin 500 mg BD; Atorvastatin 20 mg nocte; OTC multivitamin as needed; no antiplatelet or anticoagulant therapy prior to admission.",
+    "sections": [
+      {
+        "name": "Patient Identification",
+        "text": "Name H.M., 73-year-old male, admitted 19 Nov 2025 after family observed fall and pallor; anemia found on evaluation."
+      },
+      {
+        "name": "Presenting Complaint",
+        "text": "Generalized fatigue, lightheadedness, progressive exertional dyspnoea, and pallor; no overt bleeding."
+      },
+      {
+        "name": "History of Present Illness",
+        "text": "6-8 weeks of worsening fatigue, DOE (NYHA II→III), reduced exercise tolerance, intermittent orthostatic lightheadedness; denies syncope, GI bleeding, abdominal pain, bowel changes, constitutional symptoms, or bleeding elsewhere."
+      },
+      {
+        "name": "Past Medical History",
+        "text": "Hypertension, type 2 DM (diet + metformin), chronic kidney disease stage 3a; no prior GI diagnoses or transfusions."
+      },
+      {
+        "name": "Past Surgical History",
+        "text": "Left inguinal hernia repair 30 years ago; no GI surgeries."
+      },
+      {
+        "name": "Family and Social History",
+        "text": "Father MI at 70, mother cholelithiasis. Ex-smoker 20 pack-years (quit 10 yrs), no alcohol, lives with wife, retired accountant."
+      },
+      {
+        "name": "Medications",
+        "text": "Ramipril 5 mg OD, Metformin 500 mg BD, Atorvastatin 20 mg nocte, OTC multivitamin; no antiplatelets/anticoagulants."
+      },
+      {
+        "name": "Allergies",
+        "text": "No known drug allergies."
+      },
+      {
+        "name": "Review of Systems",
+        "text": "Cardio: exertional dyspnoea, no chest pain. GI: denies abdominal pain or visible bleeding; stool changes absent. GU: no hematuria. Neuro/MSK: fall without deficits."
+      },
+      {
+        "name": "Examination",
+        "text": "Pale but comfortable, vitals stable, 3/6 ejection systolic murmur radiating to carotids, lungs clear, abdomen benign, no edema or bruising, neuro intact."
+      },
+      {
+        "name": "Laboratory Findings",
+        "text": "Hb 102 g/L, MCV 70 fL, platelets 328×10^9/L, WBC 10.5×10^9/L, ferritin 12 ng/mL, iron low, TIBC high, creatinine 1.2 mg/dL (baseline 1.1), LFTs normal, coagulation normal, FOBT positive."
+      },
+      {
+        "name": "Imaging and Procedures",
+        "text": "ECG NSR, CXR clear. OGD normal, colonoscopy shows flat red lesions in caecum/ascending colon c/w angiodysplasia, capsule enteroscopy shows proximal ileal angiodysplasias."
+      },
+      {
+        "name": "Diagnosis",
+        "text": "Chronic occult GI blood loss from colonic/small bowel angiodysplasia associated with aortic stenosis (Heyde’s syndrome)."
+      }
+    ]
+  },
+  {
+    "patient_id": "patient_001",
+    "source_id": "onc_note_0001",
+    "source_type": "oncology_progress_note",
+    "document_date": "2025-11-11",
+    "dataset_version": "v1.0",
+    "key": "K1",
+    "note_body": "Patient presents with fever since yesterday. Laboratory shows Hb 12.4 g/dL, ANC 500 /µL. Diagnosis of febrile neutropenia made. Cetal (paracetamol) drops 100 mg/ml, 2 drops every 4 hours as needed.",
+    "med_list": "Cetal (paracetamol) drops 100 mg/ml, 2 drops every 4 hours as needed.",
+    "sections": [
+      {
+        "name": "HPI",
+        "text": "Patient presents with fever since yesterday."
+      },
+      {
+        "name": "Labs",
+        "text": "Laboratory shows Hb 12.4 g/dL, ANC 500 /µL."
+      },
+      {
+        "name": "Assessment",
+        "text": "Diagnosis of febrile neutropenia made."
+      },
+      {
+        "name": "Plan",
+        "text": "Cetal (paracetamol) drops 100 mg/ml, 2 drops every 4 hours as needed."
+      }
+    ]
+  }
+]
