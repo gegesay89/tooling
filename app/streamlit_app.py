@@ -35,6 +35,35 @@ def status_index(value: Optional[str]) -> int:
     except ValueError:
         return 0
 
+
+SCROLL_CONTAINER_CSS = """
+<style>
+.st-scroll-col {
+    max-height: calc(100vh - 160px);
+    overflow-y: auto;
+    padding-right: 0.5rem;
+    scrollbar-width: thin;
+}
+.st-scroll-col::-webkit-scrollbar {
+    width: 6px;
+}
+.st-scroll-col::-webkit-scrollbar-track {
+    background: transparent;
+}
+.st-scroll-col::-webkit-scrollbar-thumb {
+    background-color: rgba(150, 150, 150, 0.6);
+    border-radius: 3px;
+}
+</style>
+"""
+
+
+def inject_scroll_styles() -> None:
+    if st.session_state.get("scroll_css_injected"):
+        return
+    st.markdown(SCROLL_CONTAINER_CSS, unsafe_allow_html=True)
+    st.session_state["scroll_css_injected"] = True
+
 OBJECT_TEMPLATES: Dict[str, List[Dict[str, Any]]] = {
     "Lab Finding": [
         {
@@ -100,6 +129,41 @@ OBJECT_TEMPLATES: Dict[str, List[Dict[str, Any]]] = {
     ],
 }
 
+ALLOWED_PROPERTY_VALUE_TYPES = {"text", "numeric", "categorical", "boolean", "date", "json"}
+
+OBJECT_VALIDATION_RULES: Dict[str, Dict[str, Any]] = {
+    "Lab Finding": {
+        "required_properties": [
+            {
+                "property_name": "Result Value",
+                "property_value_type": "numeric",
+                "requires_evidence": True,
+            }
+        ],
+        "recommended_properties": [
+            {"property_name": "Categorical Value", "property_value_type": "categorical"}
+        ],
+    },
+    "Medication": {
+        "required_properties": [
+            {
+                "property_name": "Dosage",
+                "property_value_type": "text",
+                "requires_evidence": True,
+            }
+        ]
+    },
+    "Diagnosis": {
+        "required_properties": [
+            {
+                "property_name": "Assertion",
+                "property_value_type": "text",
+                "requires_evidence": True,
+            }
+        ]
+    },
+}
+
 DEFAULT_OBJECT_TYPES = [
     "Lab Finding",
     "Medication",
@@ -124,24 +188,33 @@ def load_vocab_stub() -> List[Dict[str, Any]]:
     return []
 
 
-def find_vocab_suggestions(query: str) -> List[Dict[str, Any]]:
+def find_vocab_suggestions(query: str, preferred_object_type: Optional[str] = None) -> List[Dict[str, Any]]:
     query = query.strip().lower()
     if len(query) < 2:
         return []
-    matches = []
+    matches: List[Tuple[float, Dict[str, Any]]] = []
     for entry in load_vocab_stub():
-        haystack = " ".join(
-            [
-                entry.get("label", ""),
-                entry.get("mendel_id", ""),
-                entry.get("semantic_type", ""),
-            ]
-        ).lower()
+        label = entry.get("label", "")
+        semantic_type = entry.get("semantic_type", "")
+        synonyms = " ".join(entry.get("synonyms", []))
+        codes_blob = " ".join(f"{k}:{v}" for k, v in (entry.get("codes") or {}).items())
+        haystack = " ".join([label, entry.get("mendel_id", ""), semantic_type, synonyms, codes_blob]).lower()
+        score = 0.0
         if query in haystack:
-            matches.append(entry)
-        if len(matches) >= 10:
-            break
-    return matches
+            score += 0.6
+        if label:
+            score += difflib.SequenceMatcher(None, query, label.lower()).ratio()
+        if synonyms and query in synonyms.lower():
+            score += 0.2
+        if codes_blob and query in codes_blob.lower():
+            score += 0.3
+        if preferred_object_type and entry.get("preferred_object_type") == preferred_object_type:
+            score += 0.15
+        if score > 0:
+            matches.append((score, entry))
+    matches.sort(key=lambda pair: pair[0], reverse=True)
+    top_entries = [entry for _, entry in matches[:10]]
+    return top_entries
 
 
 def load_records() -> List[Dict[str, Any]]:
@@ -504,6 +577,85 @@ def build_property_rows(df: pd.DataFrame) -> List[Dict[str, Any]]:
             }
         )
     return rows
+
+
+def _normalize_property_name(value: Any) -> str:
+    return (str(value or "").strip().lower())
+
+
+def _build_field_lookup(record: Dict[str, Any]) -> Dict[str, str]:
+    lookup: Dict[str, str] = {}
+    for field in build_evidence_field_options(record):
+        lookup[field["field_key"]] = field.get("text", "") or ""
+    return lookup
+
+
+def _validate_evidence(row: Dict[str, Any], row_index: int, field_lookup: Dict[str, str]) -> List[str]:
+    errors: List[str] = []
+    text = (row.get("evidence_text") or "").strip()
+    if not text:
+        return errors
+    field_key = row.get("evidence_field") or "note_body"
+    field_text = field_lookup.get(field_key, "")
+    try:
+        start = int(row.get("evidence_start"))
+        end = int(row.get("evidence_end"))
+    except (TypeError, ValueError):
+        errors.append(f"Row {row_index}: Evidence offsets must be integers when evidence text is present.")
+        return errors
+    if start < 0 or end <= start:
+        errors.append(f"Row {row_index}: Evidence end must be greater than start (got {start}–{end}).")
+        return errors
+    if end > len(field_text):
+        errors.append(f"Row {row_index}: Evidence end ({end}) exceeds field length ({len(field_text)}).")
+        return errors
+    snippet = field_text[start:end]
+    if snippet.strip() != text.strip():
+        errors.append(
+            f"Row {row_index}: Evidence text does not match the selected field substring ({field_key})."
+        )
+    return errors
+
+
+def validate_properties_against_template(
+    object_type: str, df: pd.DataFrame, record: Dict[str, Any]
+) -> List[str]:
+    errors: List[str] = []
+    field_lookup = _build_field_lookup(record)
+    rows = df.fillna("").to_dict("records")
+    required_rules = OBJECT_VALIDATION_RULES.get(object_type, {}).get("required_properties", [])
+    matched_required: Dict[str, bool] = {rule["property_name"].lower(): False for rule in required_rules}
+
+    for idx, row in enumerate(rows, start=1):
+        name = _normalize_property_name(row.get("property_name"))
+        value = (row.get("property_value_raw") or "").strip()
+        value_type = (row.get("property_value_type") or "text").strip()
+        if not name and not value:
+            continue
+        if value_type and value_type not in ALLOWED_PROPERTY_VALUE_TYPES:
+            errors.append(
+                f"Row {idx}: Unsupported property value type '{value_type}'. Allowed: {', '.join(sorted(ALLOWED_PROPERTY_VALUE_TYPES))}."
+            )
+        if not value:
+            errors.append(f"Row {idx}: Provide a value for '{row.get('property_name') or 'unnamed'}'.")
+        errors.extend(_validate_evidence(row, idx, field_lookup))
+
+        for rule in required_rules:
+            if name == rule["property_name"].lower():
+                if value_type and rule.get("property_value_type") and value_type != rule["property_value_type"]:
+                    errors.append(
+                        f"Row {idx}: '{rule['property_name']}' must use value type '{rule['property_value_type']}'."
+                    )
+                if rule.get("requires_evidence"):
+                    if not row.get("evidence_text"):
+                        errors.append(f"Row {idx}: '{rule['property_name']}' requires captured evidence.")
+                matched_required[rule["property_name"].lower()] = bool(value)
+
+    for rule in required_rules:
+        key = rule["property_name"].lower()
+        if not matched_required.get(key):
+            errors.append(f"Add a '{rule['property_name']}' row with a value before saving a {object_type} object.")
+    return errors
 
 
 def safe_int(value: Any) -> Any:
@@ -958,11 +1110,11 @@ def render_annotation_workspace(record: Dict[str, Any], object_type_options: Lis
             st.session_state["current_template_type"] = object_type
 
         concept_search = st.text_input(
-            "Concept search (stub vocab)",
+            "Concept search (enhanced vocab)",
             key="concept_search",
-            help="Type at least 2 characters to see suggestions",
+            help="Type label, synonym, Mendel ID, or code to search the stub vocab",
         )
-        suggestions: List[Dict[str, Any]] = find_vocab_suggestions(concept_search)
+        suggestions: List[Dict[str, Any]] = find_vocab_suggestions(concept_search, preferred_object_type=object_type)
         apply_vocab_clicked = False
         if suggestions:
             suggestion_idx = st.selectbox(
@@ -971,11 +1123,23 @@ def render_annotation_workspace(record: Dict[str, Any], object_type_options: Lis
                 format_func=lambda idx: f"{suggestions[idx]['label']} ({suggestions[idx].get('mendel_id','')})",
                 key="concept_suggestion_index",
             )
+            selected_entry = suggestions[suggestion_idx]
+            meta_bits = [selected_entry.get("semantic_type") or "", selected_entry.get("preferred_object_type") or ""]
+            st.caption(" · ".join(bit for bit in meta_bits if bit))
+            if selected_entry.get("synonyms"):
+                st.caption(f"Synonyms: {', '.join(selected_entry['synonyms'])}")
+            if selected_entry.get("codes"):
+                code_text = ", ".join(f"{k}:{v}" for k, v in selected_entry["codes"].items())
+                st.caption(f"Codes: {code_text}")
             apply_vocab_clicked = st.form_submit_button("Apply suggestion", use_container_width=True)
 
         concept_label = st.text_input("Concept label", key="concept_label_input")
         concept_mendel = st.text_input("Mendel ID", key="concept_mendel_input")
         concept_semantic = st.text_input("Semantic type", key="concept_semantic_input")
+        template_rules = OBJECT_VALIDATION_RULES.get(object_type, {})
+        required_names = [rule["property_name"] for rule in template_rules.get("required_properties", [])]
+        if required_names:
+            st.caption(f"Required properties for {object_type}: {', '.join(required_names)}")
         st.caption("Codes")
         codes_editor = st.data_editor(
             st.session_state["concept_codes_df"],
@@ -1025,6 +1189,12 @@ def render_annotation_workspace(record: Dict[str, Any], object_type_options: Lis
             else:
                 st.warning("Capture evidence from the note first")
         elif add_object_clicked:
+            validation_errors = validate_properties_against_template(object_type, st.session_state["properties_df"], record)
+            if validation_errors:
+                for message in validation_errors:
+                    st.error(message)
+                st.stop()
+
             concept: Dict[str, Any] = {
                 "label": concept_label,
                 "mendel_id": concept_mendel,
@@ -1168,11 +1338,15 @@ def render_document_viewer(records: List[Dict[str, Any]], nav_choice: str) -> No
     render_note_info(record)
     note_col, abstraction_col = st.columns([1.15, 0.85])
     with note_col:
+        st.markdown('<div class="st-scroll-col">', unsafe_allow_html=True)
         render_note_body_panel(record)
+        st.markdown('</div>', unsafe_allow_html=True)
     with abstraction_col:
+        st.markdown('<div class="st-scroll-col">', unsafe_allow_html=True)
         selected_types = render_checklist_panel(saved_counts, session_counts)
         options = resolve_object_type_options(selected_types)
         render_annotation_workspace(record, options)
+        st.markdown('</div>', unsafe_allow_html=True)
 
     latest_payload = render_saved_annotations(
         saved_rows,
@@ -1189,6 +1363,7 @@ def main() -> None:
     st.set_page_config(page_title="Medical Annotation Tool", layout="wide")
     st.title("Medical Record Annotation v0")
     ensure_session_state()
+    inject_scroll_styles()
     db.init_db()
     nav_choice = sidebar_nav()
     sidebar_auth()
