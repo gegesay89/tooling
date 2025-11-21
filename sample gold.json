@@ -1,0 +1,157 @@
+{
+  "patient_id": "patient_001",
+  "source_id": "onc_note_0001",
+  "source_type": "oncology_progress_note",
+  "document_date": "2025-11-11",
+  "annotation_meta": {
+    "annotator": "kareem_gold",
+    "annotator_role": "Gold",
+    "annotation_date": "2025-11-11",
+    "dataset_version": "v1.0",
+    "key": "K1"
+  },
+  "objects": [
+    {
+      "object_index": 1,
+      "action": "Created",
+      "object_type": "Lab Finding",
+      "object_concept": {
+        "label": "CBC",
+        "mendel_id": "888",
+        "umls_cui": "C0008878",
+        "semantic_type": "LabTest",
+        "codes": {
+          "LOINC": "718-7"
+        },
+        "synonyms": [
+          "Complete Blood Count"
+        ]
+      },
+      "properties": [
+        {
+          "property_name": "Result Value",
+          "property_value_raw": "Hb 12.4 g/dL",
+          "property_value_type": "numeric",
+          "property_value_normalized": 12.4,
+          "property_units": "g/dL",
+          "property_ucum": "g/dL",
+          "property_assertion": "present",
+          "property_negated": false,
+          "evidence": [
+            {
+              "text": "Hb 12.4 g/dL",
+              "start": 150,
+              "end": 162,
+              "sentence_id": 3,
+              "field": "note_body"
+            }
+          ],
+          "annotator_rationale": "Exact value reported in lab panel; unit clearly g/dL."
+        },
+        {
+          "property_name": "Categorical Value",
+          "property_value_raw": "within normal limits",
+          "property_value_type": "categorical",
+          "property_value_normalized": "normal",
+          "property_codes": {
+            "SNOMED": "260373001"
+          },
+          "evidence": [
+            {
+              "text": "within normal limits",
+              "start": 170,
+              "end": 193,
+              "sentence_id": 3,
+              "field": "note_body"
+            }
+          ]
+        }
+      ],
+      "supporting_facts": [],
+      "inference_type": "direct_extraction",
+      "group_id": "patient_001::onc_note_0001::obj1"
+    },
+
+    {
+      "object_index": 2,
+      "action": "Created",
+      "object_type": "Medication",
+      "object_concept": {
+        "label": "Cetal",
+        "mendel_id": "CETAL-100",
+        "umls_cui": "C123456",
+        "semantic_type": "Drug",
+        "synonyms": [
+          "Paracetamol drops"
+        ],
+        "codes": {
+          "ATC": "N02BE01"
+        }
+      },
+      "properties": [
+        {
+          "property_name": "Dosage",
+          "property_value_raw": "Cetal (paracetamol) drops 100 mg/ml, 2 drops every 4 hours as needed",
+          "property_value_type": "text",
+          "property_value_normalized": {
+            "concentration": "100 mg/ml",
+            "dose": "2 drops",
+            "frequency": "q4h",
+            "as_needed": true
+          },
+          "property_units": "mg/ml",
+          "property_ucum": "mg/mL",
+          "evidence": [
+            {
+              "text": "Cetal (paracetamol) drops 100 mg/ml, 2 drops every 4 hours as needed",
+              "start": 210,
+              "end": 270,
+              "sentence_id": 5,
+              "field": "med_list"
+            }
+          ],
+          "annotator_rationale": "Medication name and concentration provided in med list; dosing instruction explicit."
+        }
+      ],
+      "supporting_facts": [],
+      "inference_type": "direct_extraction",
+      "group_id": "patient_001::onc_note_0001::obj2"
+    },
+
+    {
+      "object_index": 3,
+      "action": "Created",
+      "object_type": "Diagnosis",
+      "object_concept": {
+        "label": "Febrile neutropenia",
+        "mendel_id": "FN-001",
+        "umls_cui": "C234567",
+        "semantic_type": "Diagnosis",
+        "codes": {
+          "ICD10": "D70.9"
+        }
+      },
+      "properties": [
+        {
+          "property_name": "Assertion",
+          "property_value_raw": "Febrile neutropenia",
+          "property_value_type": "text",
+          "property_value_normalized": "febrile_neutropenia",
+          "evidence": [
+            {
+              "text": "Patient presents with fever and absolute neutrophil count 500 /µL",
+              "start": 300,
+              "end": 350,
+              "sentence_id": 8,
+              "field": "note_body"
+            }
+          ],
+          "annotator_rationale": "Diagnosis stated in assessment and supported by lab values."
+        }
+      ],
+      "supporting_facts": [],
+      "inference_type": "direct_extraction",
+      "group_id": "patient_001::onc_note_0001::obj3"
+    }
+  ]
+}

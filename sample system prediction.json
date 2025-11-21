@@ -1,0 +1,116 @@
+{
+  "patient_id": "patient_001",
+  "source_id": "onc_note_0001",
+  "source_type": "oncology_progress_note",
+  "document_date": "2025-11-11",
+  "annotation_meta": {
+    "annotator": "run_A_v1",
+    "annotator_role": "Test",
+    "annotation_date": "2025-11-11",
+    "dataset_version": "v1.0",
+    "key": "K1"
+  },
+  "objects": [
+    {
+      "object_index": 1,
+      "action": "Created",
+      "object_type": "Lab Finding",
+      "object_concept": {
+        "label": "CBC",
+        "mendel_id": "888",
+        "semantic_type": "LabTest"
+      },
+      "properties": [
+        {
+          "property_name": "Result Value",
+          "property_value_raw": "Hb 12.4 g/dL",
+          "property_value_type": "numeric",
+          "property_value_normalized": 12.4,
+          "property_units": "g/dL",
+          "evidence": [
+            {
+              "text": "Hb 12.4 g/dL",
+              "start": 149,
+              "end": 162,
+              "sentence_id": 3,
+              "field": "note_body"
+            }
+          ]
+        },
+        {
+          "property_name": "Categorical Value",
+          "property_value_raw": "normal",
+          "property_value_type": "categorical",
+          "property_value_normalized": "normal",
+          "evidence": [
+            {
+              "text": "normal",
+              "start": 171,
+              "end": 176,
+              "sentence_id": 3,
+              "field": "note_body"
+            }
+          ]
+        }
+      ],
+      "group_id": "patient_001::onc_note_0001::obj1"
+    },
+
+    {
+      "object_index": 2,
+      "action": "Created",
+      "object_type": "Medication",
+      "object_concept": {
+        "label": "Cetal",
+        "mendel_id": "CETAL-100",
+        "semantic_type": "Drug"
+      },
+      "properties": [
+        {
+          "property_name": "Dosage",
+          "property_value_raw": "10 mg/ml, 2 drops every 6 hours",
+          "property_value_type": "text",
+          "property_value_normalized": {
+            "concentration": "10 mg/ml",
+            "dose": "2 drops",
+            "frequency": "q6h",
+            "as_needed": false
+          },
+          "property_units": "mg/ml",
+          "property_ucum": "mg/mL",
+          "evidence": [
+            {
+              "text": "Cetal 10 mg/ml 2 drops every 6 hours",
+              "start": 210,
+              "end": 250,
+              "sentence_id": 5,
+              "field": "med_list"
+            }
+          ]
+        }
+      ],
+      "group_id": "patient_001::onc_note_0001::obj2"
+    },
+
+    {
+      "object_index": 3,
+      "action": "Created",
+      "object_type": "Diagnosis",
+      "object_concept": {
+        "label": "Neutropenia",
+        "mendel_id": "FN-001",
+        "semantic_type": "Diagnosis"
+      },
+      "properties": [
+        {
+          "property_name": "Assertion",
+          "property_value_raw": "Neutropenia",
+          "property_value_type": "text",
+          "property_value_normalized": "neutropenia",
+          "evidence": []
+        }
+      ],
+      "group_id": "patient_001::onc_note_0001::obj3"
+    }
+  ]
+}
